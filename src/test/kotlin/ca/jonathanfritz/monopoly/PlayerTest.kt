@@ -1,5 +1,6 @@
 package ca.jonathanfritz.monopoly
 
+import ca.jonathanfritz.monopoly.Property.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -10,11 +11,15 @@ internal class PlayerTest {
         val darkBlueOwner = Player(
             "Tony",
             0,
-            mutableListOf(Property.parkPlace, Property.boardwalk)
+            mutableMapOf(
+                Property.of(ParkPlace::class) to Player.Development(),
+                Property.of(Boardwalk::class) to Player.Development()
+            )
         )
-        assertTrue(darkBlueOwner.isOwner(Property.parkPlace))
-        assertTrue(darkBlueOwner.isOwner(Property.boardwalk))
-        assertFalse(darkBlueOwner.isOwner(Property.marvinGardens))  // TODO: extend me to test all unowned properties
+        assertTrue(darkBlueOwner.isOwner(ParkPlace::class))
+        assertTrue(darkBlueOwner.isOwner(Boardwalk::class))
+        Property.values.keys.filterNot { it == ParkPlace::class || it == Boardwalk::class }
+            .forEach { unownedProperty -> assertFalse(darkBlueOwner.isOwner(unownedProperty)) }
     }
 
     @Test
@@ -22,7 +27,10 @@ internal class PlayerTest {
         val brownMonopoly = Player(
             "Joe",
             0,
-            mutableListOf(Property.mediterraneanAvenue, Property.balticAvenue)
+            mutableMapOf(
+                Property.of(MediterraneanAvenue::class) to Player.Development(),
+                Property.of(BalticAvenue::class) to Player.Development()
+            )
         )
         assertTrue(brownMonopoly.hasMonopoly(ColourGroup.Brown))
         ColourGroup.values().filterNot { it == ColourGroup.Brown }.forEach { assertFalse(brownMonopoly.hasMonopoly(it)) }

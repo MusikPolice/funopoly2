@@ -1,5 +1,7 @@
 package ca.jonathanfritz.monopoly
 
+import ca.jonathanfritz.monopoly.Property.*
+
 class Bank {
     // https://www.hasbro.com/common/instruct/00009.pdf
     var houses = 32
@@ -12,36 +14,36 @@ class Bank {
 
     // the title deeds that the bank can sell to players
     val titleDeeds: MutableList<TitleDeed> = mutableListOf(
-        Property.mediterraneanAvenue,
-        Property.balticAvenue,
-        Railroad.reading,
-        Property.orientalAvenue,
-        Property.vermontAvenue,
-        Property.connecticutAvenue,
+        Property.of(MediterraneanAvenue::class),
+        Property.of(BalticAvenue::class),
+        Railroad.of(Railroad.ReadingRailroad::class),
+        Property.of(OrientalAvenue::class),
+        Property.of(VermontAvenue::class),
+        Property.of(ConnecticutAvenue::class),
 
-        Property.stCharlesPlace,
-        Utility.electricCompany,
-        Property.statesAvenue,
-        Property.virginiaAvenue,
-        Railroad.pennsylvania,
-        Property.stJamesPlace,
-        Property.tennesseeAvenue,
-        Property.newYorkAvenue,
+        Property.of(StCharlesPlace::class),
+        Utility.of(Utility.ElectricCompany::class),
+        Property.of(StatesAvenue::class),
+        Property.of(VirginiaAvenue::class),
+        Railroad.of(Railroad.PennsylvaniaRailroad::class),
+        Property.of(StJamesPlace::class),
+        Property.of(TennesseeAvenue::class),
+        Property.of(NewYorkAvenue::class),
 
-        Property.kentuckyAvenue,
-        Property.indianaAvenue,
-        Property.illinoisAvenue,
-        Railroad.bo,
-        Property.atlanticAvenue,
-        Property.ventnorAvenue,
-        Utility.waterWorks,
-        Property.marvinGardens,
+        Property.of(KentuckyAvenue::class),
+        Property.of(IndianaAvenue::class),
+        Property.of(IllinoisAvenue::class),
+        Railroad.of(Railroad.BandORailroad::class),
+        Property.of(AtlanticAvenue::class),
+        Property.of(VentnorAvenue::class),
+        Utility.of(Utility.WaterWorks::class),
+        Property.of(MarvinGardens::class),
 
-        Property.pacificAvenue,
-        Property.northCarolinaAvenue,
-        Property.pennsylvaniaAvenue,
-        Railroad.shortLine,
-        Property.parkPlace,
-        Property.boardwalk
+        Property.of(PacificAvenue::class),
+        Property.of(NorthCarolinaAvenue::class),
+        Property.of(PennsylvaniaAvenue::class),
+        Railroad.of(Railroad.ShortlineRailroad::class),
+        Property.of(ParkPlace::class),
+        Property.of(Boardwalk::class)
     )
 }

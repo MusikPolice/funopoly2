@@ -11,6 +11,4 @@ enum class ColourGroup {
     Yellow,
     Green,
     DarkBlue;
-
-    fun titleDeedNames(): List<TitleDeedName> = TitleDeedName.values().filter { it.colourGroup == this }
 }
