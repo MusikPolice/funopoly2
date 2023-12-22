@@ -9,12 +9,11 @@ sealed class Railroad(): TitleDeed(ColourGroup.Railroads, 200, 100) {
     class BandORailroad(): Railroad()
     class ShortlineRailroad(): Railroad()
 
-    // uses reflection to build a list of all instances of the sealed class once at initialization time
-    // this basically mimics the way that an enum's elements can be accessed, while still allowing for the use of inheritance
     companion object {
-        val values = Railroad::class.sealedSubclasses.associateWith { it.constructors.first().call() }
-        val colourGroups = mapOf(ColourGroup.Railroads to values.values)
-        fun <R: Railroad> of(kclass: KClass<R>) = values.getValue(kclass)
+        val values: Map<KClass<out Railroad>, Railroad> = Railroad::class.sealedSubclasses.associateWith {
+            it.constructors.first().call()
+        }
+        fun <R: Railroad> of(kClass: KClass<R>): Railroad = values.getValue(kClass)
     }
 
     // TODO: rent is based on number of railroads owned - $25 if one, $50 if 2, $100 if three, $200 if four

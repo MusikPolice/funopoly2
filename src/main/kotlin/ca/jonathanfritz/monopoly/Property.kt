@@ -48,11 +48,8 @@ sealed class Property(
     // uses reflection to build a list of all instances of the sealed class once at initialization time
     // this basically mimics the way that an enum's elements can be accessed, while still allowing for the use of inheritance
     companion object {
-        // TODO: generalize this for TileSet so that it isn't repeated in each of Property, Railroad, and Utility
         val values = Property::class.sealedSubclasses.associateWith { it.constructors.first().call() }
-        val colourGroups = ColourGroup.values().associateWith { colour -> values.values.filter { it.colourGroup  == colour} }
-        fun <P: Property> of(kclass: KClass<P>) = values.getValue(kclass)
-        fun of(colourGroup: ColourGroup) = values.values.filter { it.colourGroup == colourGroup }
+        fun <P: Property> of(kClass: KClass<P>) = values.getValue(kClass)
     }
 
     // if all properties in a set are owned, rent on undeveloped properties doubles

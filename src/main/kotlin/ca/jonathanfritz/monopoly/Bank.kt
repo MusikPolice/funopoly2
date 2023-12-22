@@ -13,6 +13,7 @@ class Bank {
     var money = 20580
 
     // the title deeds that the bank can sell to players
+    // TODO: could this just be TitleDeed.values ?
     val titleDeeds: MutableList<TitleDeed> = mutableListOf(
         Property.of(MediterraneanAvenue::class),
         Property.of(BalticAvenue::class),

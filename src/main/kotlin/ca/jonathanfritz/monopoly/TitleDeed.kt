@@ -8,3 +8,5 @@ sealed class TitleDeed (
     val isRailroad: Boolean = false,
     val isBuildable: Boolean = !(isUtility || isRailroad)
 )
+
+// TODO: try to generalize the .values and .of() companion objects from child classes using the lazy modifier to break the cyclical dependency

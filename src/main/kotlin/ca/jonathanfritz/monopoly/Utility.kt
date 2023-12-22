@@ -10,8 +10,7 @@ sealed class Utility(): TitleDeed(ColourGroup.Utilities, 150, 75) {
 
     companion object {
         val values = Utility::class.sealedSubclasses.associateWith { it.constructors.first().call() }
-        val colourGroups = mapOf(ColourGroup.Utilities to values.values)
-        fun <U: Utility> of(kclass: KClass<U>) = values.getValue(kclass)
+        fun <U: Utility> of(kClass: KClass<U>) = values.getValue(kClass)
     }
 
     // TODO: if one utility is owned, rent is 4x dice roll; if both are owned, rent is 10x dice roll
