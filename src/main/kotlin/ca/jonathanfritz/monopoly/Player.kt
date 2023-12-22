@@ -6,7 +6,7 @@ import kotlin.reflect.KClass
 
 data class Player(
     val name: String,
-    private var money: Int,
+    var money: Int = 0,
     private val deeds: MutableMap<TitleDeed, Development> = mutableMapOf()
 ) {
 
