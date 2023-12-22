@@ -4,10 +4,10 @@ import kotlin.reflect.KClass
 
 sealed class Railroad(): TitleDeed(ColourGroup.Railroads, 200, 100) {
     // https://monopoly.fandom.com/wiki/List_of_Monopoly_Properties
-    class ReadingRailroad(): Railroad()
-    class PennsylvaniaRailroad(): Railroad()
-    class BandORailroad(): Railroad()
-    class ShortlineRailroad(): Railroad()
+    class ReadingRailroad : Railroad()
+    class PennsylvaniaRailroad : Railroad()
+    class BandORailroad : Railroad()
+    class ShortlineRailroad : Railroad()
 
     companion object {
         val values: Map<KClass<out Railroad>, Railroad> = Railroad::class.sealedSubclasses.associateWith {
