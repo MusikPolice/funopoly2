@@ -1,4 +1,4 @@
-package ca.jonathanfritz.monopoly
+package ca.jonathanfritz.monopoly.deed
 
 import kotlin.reflect.KClass
 

@@ -1,6 +1,6 @@
-package ca.jonathanfritz.monopoly
+package ca.jonathanfritz.monopoly.deed
 
-import ca.jonathanfritz.monopoly.Property.*
+import ca.jonathanfritz.monopoly.deed.Property.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals

@@ -1,6 +1,8 @@
 package ca.jonathanfritz.monopoly
 
-import ca.jonathanfritz.monopoly.Property.*
+import ca.jonathanfritz.monopoly.deed.ColourGroup
+import ca.jonathanfritz.monopoly.deed.Property
+import ca.jonathanfritz.monopoly.deed.Property.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -8,31 +10,27 @@ internal class PlayerTest {
 
     @Test
     fun isOwnerTest() {
-        val darkBlueOwner = Player(
-            "Tony",
+        // this player owns Boardwalk and Park Place, giving them a Monopoly on the dark blue properties
+        val highRoller = Player(
+            "High Roller",
             0,
-            mutableMapOf(
-                Property.of(ParkPlace::class) to Player.Development(),
-                Property.of(Boardwalk::class) to Player.Development()
-            )
+            ColourGroup.DarkBlue.titleDeeds().values.associateWith { Player.Development() }.toMutableMap()
         )
-        assertTrue(darkBlueOwner.isOwner(ParkPlace::class))
-        assertTrue(darkBlueOwner.isOwner(Boardwalk::class))
+        assertTrue(highRoller.isOwner(ParkPlace::class))
+        assertTrue(highRoller.isOwner(Boardwalk::class))
         Property.values.keys.filterNot { it == ParkPlace::class || it == Boardwalk::class }
-            .forEach { unownedProperty -> assertFalse(darkBlueOwner.isOwner(unownedProperty)) }
+            .forEach { unownedProperty -> assertFalse(highRoller.isOwner(unownedProperty)) }
     }
 
     @Test
     fun monopoliesTest() {
-        val brownMonopoly = Player(
-            "Joe",
+        // this player owns Mediterranean and Baltic Avenues, giving them a Monopoly on the brown properties
+        val lowRoller = Player(
+            "Low Roller",
             0,
-            mutableMapOf(
-                Property.of(MediterraneanAvenue::class) to Player.Development(),
-                Property.of(BalticAvenue::class) to Player.Development()
-            )
+            ColourGroup.Brown.titleDeeds().values.associateWith { Player.Development() }.toMutableMap()
         )
-        assertTrue(brownMonopoly.hasMonopoly(ColourGroup.Brown))
-        ColourGroup.values().filterNot { it == ColourGroup.Brown }.forEach { assertFalse(brownMonopoly.hasMonopoly(it)) }
+        assertTrue(lowRoller.hasMonopoly(ColourGroup.Brown))
+        ColourGroup.values().filterNot { it == ColourGroup.Brown }.forEach { assertFalse(lowRoller.hasMonopoly(it)) }
     }
 }

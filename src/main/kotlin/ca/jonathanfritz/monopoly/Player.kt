@@ -1,5 +1,7 @@
 package ca.jonathanfritz.monopoly
 
+import ca.jonathanfritz.monopoly.deed.ColourGroup
+import ca.jonathanfritz.monopoly.deed.TitleDeed
 import kotlin.reflect.KClass
 
 data class Player(

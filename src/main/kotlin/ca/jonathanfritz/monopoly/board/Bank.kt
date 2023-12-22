@@ -1,4 +1,6 @@
-package ca.jonathanfritz.monopoly
+package ca.jonathanfritz.monopoly.board
+
+import ca.jonathanfritz.monopoly.deed.TitleDeed
 
 class Bank {
     // https://www.hasbro.com/common/instruct/00009.pdf

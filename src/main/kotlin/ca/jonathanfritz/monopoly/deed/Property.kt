@@ -1,6 +1,6 @@
-package ca.jonathanfritz.monopoly
+package ca.jonathanfritz.monopoly.deed
 
-import ca.jonathanfritz.monopoly.ColourGroup.*
+import ca.jonathanfritz.monopoly.deed.ColourGroup.*
 import kotlin.reflect.KClass
 
 sealed class Property(
