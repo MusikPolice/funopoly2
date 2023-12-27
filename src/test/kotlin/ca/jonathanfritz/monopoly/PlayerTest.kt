@@ -31,4 +31,45 @@ internal class PlayerTest {
         assertTrue(lowRoller.hasMonopoly(ColourGroup.Brown))
         ColourGroup.values().filterNot { it == ColourGroup.Brown }.forEach { assertFalse(lowRoller.hasMonopoly(it)) }
     }
+
+    @Test
+    fun networthTest() {
+        val cashOnly = Player(
+            "Cash Only",
+            money = 5000
+        )
+        assertEquals(5000, cashOnly.networth())
+        assertEquals(200, cashOnly.incomeTaxAmount())
+
+        val propertyOnly = Player(
+            "Property Only",
+            deeds = mutableMapOf(
+                OrientalAvenue() to Player.Development(),
+                NewYorkAvenue() to Player.Development(),
+                AtlanticAvenue() to Player.Development(),
+                PennsylvaniaAvenue() to Player.Development()
+            )
+        )
+        assertEquals(880, propertyOnly.networth())
+        assertEquals(88, propertyOnly.incomeTaxAmount())
+
+        val withHouses = Player(
+            "Houses",
+            deeds = mutableMapOf(
+                BalticAvenue() to Player.Development(numHouses = 2)
+            )
+        )
+        assertEquals(160, withHouses.networth())
+        assertEquals(16, withHouses.incomeTaxAmount())
+
+        val withHotels = Player(
+            "Hotels",
+            deeds = mutableMapOf(
+                MediterraneanAvenue() to Player.Development(numHouses = 4),
+                BalticAvenue() to Player.Development(numHouses = 4, hotel = true)
+            )
+        )
+        assertEquals(570, withHotels.networth())
+        assertEquals(57, withHotels.incomeTaxAmount())
+    }
 }

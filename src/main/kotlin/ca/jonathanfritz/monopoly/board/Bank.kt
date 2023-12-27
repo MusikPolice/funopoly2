@@ -2,6 +2,7 @@ package ca.jonathanfritz.monopoly.board
 
 import ca.jonathanfritz.monopoly.Player
 import ca.jonathanfritz.monopoly.deed.TitleDeed
+import ca.jonathanfritz.monopoly.exception.InsufficientFundsException
 
 class Bank (
     // https://www.hasbro.com/common/instruct/00009.pdf
@@ -17,8 +18,19 @@ class Bank (
     private val titleDeeds: MutableList<TitleDeed> = mutableListOf(*TitleDeed.values.values.toTypedArray())
 ) {
     fun pay(player: Player, amount: Int) {
+        if (amount < 0) throw IllegalArgumentException("Amount to pay must be greater than $0")
+
         println("${player.name} receives \$$amount")
         money -= amount
         player.money += amount
+    }
+
+    fun charge(player: Player, amount: Int) {
+        if (amount < 0) throw IllegalArgumentException("Amount to charge must be greater than $0")
+        if (player.money < amount) throw InsufficientFundsException("${player.name} has insufficient funds (${player.money} < $amount)")
+
+        println("${player.name} pays \$$amount")
+        money += amount
+        player.money -= amount
     }
 }

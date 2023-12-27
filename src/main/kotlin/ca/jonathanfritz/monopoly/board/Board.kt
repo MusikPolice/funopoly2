@@ -1,20 +1,16 @@
 package ca.jonathanfritz.monopoly.board
 
 import ca.jonathanfritz.monopoly.Player
-import ca.jonathanfritz.monopoly.board.Board.Tile.*
+import ca.jonathanfritz.monopoly.board.Tile.*
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Property.*
-import ca.jonathanfritz.monopoly.deed.Railroad
 import ca.jonathanfritz.monopoly.deed.Railroad.*
-import ca.jonathanfritz.monopoly.deed.TitleDeed
-import ca.jonathanfritz.monopoly.deed.Utility
 import ca.jonathanfritz.monopoly.deed.Utility.*
 import kotlin.random.Random
 import kotlin.reflect.KClass
 
 class Board (
-    val players: List<Player>,
-    val bank: Bank = Bank(),
+    private val bank: Bank,
     private val rng: Random = Random.Default,
     private val dice: Dice = Dice(rng),
     // TODO: decks of Community Chest and Chance cards
@@ -63,17 +59,7 @@ class Board (
         PropertyBuyable(Boardwalk::class),
     )
 
-    init {
-        players.forEach { player ->
-            // the bank grants each player $1500 starting cash
-            bank.pay(player, 1500)
-
-            // each player starts on Go
-            player.position = 0
-        }
-    }
-
-    fun executeRound() {
+    fun executeRound(players: List<Player>) {
         // in each round, every player gets between one and three turns on which to affect the game state
         players.forEach { player ->
 
@@ -98,7 +84,7 @@ class Board (
                 // the player advances around the board
                 val (tile, passedGo) = advancePlayerBy(player, roll.amount)
                 if (passedGo) println("\t\t${player.name} passed Go!")
-                tile.onLanding(player)
+                tile.onLanding(player, bank)
             } while (roll.isDoubles && doublesCount < 3)
         }
     }
@@ -152,69 +138,4 @@ class Board (
         throw IllegalArgumentException("Failed to find ${propertyClass.simpleName} after position ${player.position} (${tiles[player.position]::class})")
     }
 
-    sealed class Tile {
-
-        // TODO: start implementing game logic
-        abstract fun onLanding(player: Player)
-
-        class Go: Tile() {
-            override fun onLanding(player: Player) {
-                println("\t\t${player.name} landed on Go")
-            }
-        }
-
-        abstract class Buyable(val deedClass: KClass<out TitleDeed>): Tile() {
-            override fun onLanding(player: Player) {
-                println("\t\t${player.name} landed on ${deedClass.simpleName}")
-            }
-        }
-
-        class PropertyBuyable(deedClass: KClass<out Property>): Buyable(deedClass) {}
-
-        class RailroadBuyable(deedClass: KClass<out Railroad>): Buyable(deedClass) { }
-
-        class UtilityBuyable(deedClass: KClass<out Utility>): Buyable(deedClass) { }
-
-        class CommunityChest(val side: Int): Tile() {
-            override fun onLanding(player: Player) {
-                println("\t\t${player.name} landed on CommunityChest (side $side)")
-            }
-        }
-
-        class IncomeTax: Tile() {
-            override fun onLanding(player: Player) {
-                println("\t\t${player.name} landed on IncomeTax")
-            }
-        }
-
-        class Chance(val side: Int): Tile() {
-            override fun onLanding(player: Player) {
-                println("\t\t${player.name} landed on Chance (side $side)")
-            }
-        }
-
-        class Jail: Tile() {
-            override fun onLanding(player: Player) {
-                println("\t\t${player.name} landed on Jail")
-            }
-        }
-
-        class FreeParking: Tile() {
-            override fun onLanding(player: Player) {
-                println("\t\t${player.name} landed on FreeParking")
-            }
-        }
-
-        class GoToJail: Tile() {
-            override fun onLanding(player: Player) {
-                println("\t\t${player.name} landed on GoToJail")
-            }
-        }
-
-        class LuxuryTax: Tile() {
-            override fun onLanding(player: Player) {
-                println("\t\t${player.name} landed on LuxuryTax")
-            }
-        }
-    }
 }
