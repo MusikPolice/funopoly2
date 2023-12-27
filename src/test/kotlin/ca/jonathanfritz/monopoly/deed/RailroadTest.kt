@@ -13,7 +13,7 @@ internal class RailroadTest {
             setOf(
                 ReadingRailroad::class,
                 PennsylvaniaRailroad::class,
-                BandORailroad::class,
+                BAndORailroad::class,
                 ShortlineRailroad::class
             ),
             Railroad.values.keys

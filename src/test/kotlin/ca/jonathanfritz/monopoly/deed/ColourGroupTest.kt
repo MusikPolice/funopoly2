@@ -98,7 +98,7 @@ internal class ColourGroupTest {
     @Test
     fun `railroads contains expected title deeds`() {
         assertEquals(
-            setOf(ReadingRailroad::class, PennsylvaniaRailroad::class, BandORailroad::class, ShortlineRailroad::class),
+            setOf(ReadingRailroad::class, PennsylvaniaRailroad::class, BAndORailroad::class, ShortlineRailroad::class),
             ColourGroup.Railroads.titleDeeds().keys
         )
     }

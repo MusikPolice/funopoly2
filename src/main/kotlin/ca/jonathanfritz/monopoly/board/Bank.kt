@@ -11,7 +11,7 @@ class Bank (
     // https://www.monopolyland.com/how-much-money-in-monopoly-set/
     // TODO: apparently old sets (pre-2008) shipped with $15,140 - could be a difference that we can test
     // TODO: per the rules, the bank can never run out of money, so maybe this doesn't matter?
-    private var money: Int = 20580,
+    var money: Int = 20580,
 
     // a list of all title deeds that the bank can sell to players
     private val titleDeeds: MutableList<TitleDeed> = mutableListOf(*TitleDeed.values.values.toTypedArray())

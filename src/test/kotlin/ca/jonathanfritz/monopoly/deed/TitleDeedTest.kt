@@ -37,7 +37,7 @@ internal class TitleDeedTest {
                 Boardwalk::class,
                 ReadingRailroad::class,
                 PennsylvaniaRailroad::class,
-                BandORailroad::class,
+                BAndORailroad::class,
                 ShortlineRailroad::class,
                 ElectricCompany::class,
                 WaterWorks::class

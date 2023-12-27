@@ -10,10 +10,12 @@ class Monopoly(
     private val config: Config = Config()
 ) {
     fun executeGame() {
-        // TODO: unit tests for each movement scenario that is logged
         (1 .. config.maxRounds).forEach { round ->
             println("\nRound $round:")
             board.executeRound()
+
+            // TODO: capture some kind of game state after each round
+            //  could be used for testing, debugging, post-game analysis, or eventually for animating individual games
         }
     }
 

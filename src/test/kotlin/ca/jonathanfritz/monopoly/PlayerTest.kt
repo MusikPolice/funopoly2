@@ -13,8 +13,7 @@ internal class PlayerTest {
         // this player owns Boardwalk and Park Place, giving them a Monopoly on the dark blue properties
         val highRoller = Player(
             "High Roller",
-            0,
-            ColourGroup.DarkBlue.titleDeeds().values.associateWith { Player.Development() }.toMutableMap()
+            deeds = ColourGroup.DarkBlue.titleDeeds().values.associateWith { Player.Development() }.toMutableMap()
         )
         assertTrue(highRoller.isOwner(ParkPlace::class))
         assertTrue(highRoller.isOwner(Boardwalk::class))
@@ -27,8 +26,7 @@ internal class PlayerTest {
         // this player owns Mediterranean and Baltic Avenues, giving them a Monopoly on the brown properties
         val lowRoller = Player(
             "Low Roller",
-            0,
-            ColourGroup.Brown.titleDeeds().values.associateWith { Player.Development() }.toMutableMap()
+            deeds = ColourGroup.Brown.titleDeeds().values.associateWith { Player.Development() }.toMutableMap()
         )
         assertTrue(lowRoller.hasMonopoly(ColourGroup.Brown))
         ColourGroup.values().filterNot { it == ColourGroup.Brown }.forEach { assertFalse(lowRoller.hasMonopoly(it)) }

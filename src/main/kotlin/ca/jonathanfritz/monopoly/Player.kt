@@ -5,9 +5,20 @@ import ca.jonathanfritz.monopoly.deed.TitleDeed
 import kotlin.reflect.KClass
 
 data class Player(
+    // this player's name, for display purposes only
     val name: String,
+
+    // the amount of money that this player has
     var money: Int = 0,
-    private val deeds: MutableMap<TitleDeed, Development> = mutableMapOf()
+
+    // the player's position on the board
+    var position: Int = 0,
+
+    // true if the player is in jail (as opposed to just visiting)
+    var inJail: Boolean = false,
+
+    // the properties that this player owns, along with their development state
+    val deeds: MutableMap<TitleDeed, Development> = mutableMapOf()
 ) {
 
     fun <T : TitleDeed> isOwner(titleDeed: KClass<T>): Boolean = deeds.keys.map { it::class }.contains(titleDeed)

@@ -3,11 +3,11 @@ package ca.jonathanfritz.monopoly.board
 import kotlin.random.Random
 
 // represents a set of two six-sided dice that can be rolled repeatedly
-class Dice (
+open class Dice (
     private val rng: Random = Random.Default
 ) {
 
-    fun roll() = Roll(
+    open fun roll() = Roll(
         rng.nextInt(1, 6),
         rng.nextInt(1, 6),
     )
