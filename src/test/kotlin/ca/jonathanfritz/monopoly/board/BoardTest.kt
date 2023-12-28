@@ -11,7 +11,6 @@ import org.junit.jupiter.api.TestFactory
 import kotlin.reflect.KClass
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 internal class BoardTest {

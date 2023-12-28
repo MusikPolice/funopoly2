@@ -34,24 +34,27 @@ sealed class Tile {
     class CommunityChest(val side: Int): Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on CommunityChest (side $side)")
+            // TODO: draw a card and do what it says
         }
     }
 
     class IncomeTax: Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             val amount = player.incomeTaxAmount()
-            bank.charge(player, amount, " in income tax")
+            bank.charge(player, amount, "in income tax")
         }
     }
 
     class Chance(val side: Int): Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on Chance (side $side)")
+            // TODO: draw a card and do what it says
         }
     }
 
     class Jail: Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
+            // the player is just visiting, so this is a no-op
             println("\t\t${player.name} landed on Jail")
         }
     }
@@ -72,8 +75,7 @@ sealed class Tile {
 
     class LuxuryTax: Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
-            // TODO
-            println("\t\t${player.name} landed on LuxuryTax")
+            bank.charge(player, 100, "in luxury tax")
         }
     }
 }

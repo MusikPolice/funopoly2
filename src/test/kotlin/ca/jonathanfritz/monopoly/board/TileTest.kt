@@ -21,6 +21,19 @@ internal class TileTest {
     }
 
     @Test
+    fun `luxury tax tile charges player upon landing`() {
+        val player = Player("Snuffy", 200)
+        val bank = Bank()
+        val luxuryTax = Tile.LuxuryTax()
+        val bankStartingBalance = bank.money
+
+        luxuryTax.onLanding(player, bank, Board(bank))
+
+        assertEquals(100, player.money)
+        assertEquals(bankStartingBalance + 100, bank.money)
+    }
+
+    @Test
     fun `go to jail tile puts player in jail upon landing`() {
         val player = Player("Ernie")
         val bank = Bank()
