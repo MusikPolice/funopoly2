@@ -25,12 +25,16 @@ class Bank (
         player.money += amount
     }
 
-    fun charge(player: Player, amount: Int) {
+    fun charge(player: Player, amount: Int, reason: String = "") {
         if (amount < 0) throw IllegalArgumentException("Amount to charge must be greater than $0")
-        if (player.money < amount) throw InsufficientFundsException("${player.name} has insufficient funds (${player.money} < $amount)")
+        if (player.money < amount) throw InsufficientFundsException("${player.name} has insufficient funds (${player.money} < $amount) $reason")
 
-        println("${player.name} pays \$$amount")
+        println("\t\t${player.name} pays \$$amount $reason")
         money += amount
         player.money -= amount
+    }
+
+    fun useGetOutOfJailFreeCard(player: Player) {
+        TODO("Not yet implemented - need chest/community chest first!")
     }
 }

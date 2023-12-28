@@ -9,17 +9,19 @@ import kotlin.reflect.KClass
 
 sealed class Tile {
 
-    abstract fun onLanding(player: Player, bank: Bank)
+    abstract fun onLanding(player: Player, bank: Bank, board: Board)
 
     class Go: Tile() {
-        override fun onLanding(player: Player, bank: Bank) {
+        override fun onLanding(player: Player, bank: Bank, board: Board) {
+            // TODO: nothing special happens here unless we're playing with house rules that double salary when the player lands on go
             println("\t\t${player.name} landed on Go")
         }
     }
 
     abstract class Buyable(val deedClass: KClass<out TitleDeed>): Tile() {
-        override fun onLanding(player: Player, bank: Bank) {
+        override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on ${deedClass.simpleName}")
+            // TODO: give player the option to buy, trigger an auction if they decline
         }
     }
 
@@ -30,46 +32,47 @@ sealed class Tile {
     class UtilityBuyable(deedClass: KClass<out Utility>): Buyable(deedClass)
 
     class CommunityChest(val side: Int): Tile() {
-        override fun onLanding(player: Player, bank: Bank) {
+        override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on CommunityChest (side $side)")
         }
     }
 
-    // TODO test me!
     class IncomeTax: Tile() {
-        override fun onLanding(player: Player, bank: Bank) {
+        override fun onLanding(player: Player, bank: Bank, board: Board) {
             val amount = player.incomeTaxAmount()
-            println("\t\t${player.name} landed on IncomeTax and paid \$$amount")
-            bank.charge(player, amount)
+            bank.charge(player, amount, " in income tax")
         }
     }
 
     class Chance(val side: Int): Tile() {
-        override fun onLanding(player: Player, bank: Bank) {
+        override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on Chance (side $side)")
         }
     }
 
     class Jail: Tile() {
-        override fun onLanding(player: Player, bank: Bank) {
+        override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on Jail")
         }
     }
 
     class FreeParking: Tile() {
-        override fun onLanding(player: Player, bank: Bank) {
+        override fun onLanding(player: Player, bank: Bank, board: Board) {
+            // this does nothing unless house rule that awards the pot is active
             println("\t\t${player.name} landed on FreeParking")
         }
     }
 
     class GoToJail: Tile() {
-        override fun onLanding(player: Player, bank: Bank) {
+        override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on GoToJail")
+            board.goToJail(player)
         }
     }
 
     class LuxuryTax: Tile() {
-        override fun onLanding(player: Player, bank: Bank) {
+        override fun onLanding(player: Player, bank: Bank, board: Board) {
+            // TODO
             println("\t\t${player.name} landed on LuxuryTax")
         }
     }

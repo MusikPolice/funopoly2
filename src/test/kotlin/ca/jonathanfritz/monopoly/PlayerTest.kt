@@ -72,4 +72,60 @@ internal class PlayerTest {
         assertEquals(570, withHotels.networth())
         assertEquals(57, withHotels.incomeTaxAmount())
     }
+
+    @Test
+    fun `isInJail and decrementRemainingTurnsInJail mutate player state as expected`() {
+        val player = Player("Snuffleupagus")
+        assertPlayerIsNotInJail(player)
+
+        // attempting to decrement the value when the player is not in jail is a no-op
+        assertEquals(0, player.decrementRemainingTurnsInJail())
+        assertPlayerIsNotInJail(player)
+
+        // but once the player is in jail, the decrement function can be used to track how many turns the player must spend there
+        player.isInJail = true
+        assertTrue(player.isInJail)
+        assertEquals(3, player.remainingTurnsInJail)
+
+        assertEquals(2, player.decrementRemainingTurnsInJail())
+        assertEquals(1, player.decrementRemainingTurnsInJail())
+
+        // the final decrement operation mutates isInJail too
+        assertEquals(0, player.decrementRemainingTurnsInJail())
+        assertPlayerIsNotInJail(player)
+
+        // if we put the player back in jail, we can cancel that state
+        player.isInJail = true
+        assertTrue(player.isInJail)
+        assertEquals(3, player.remainingTurnsInJail)
+        assertEquals(2, player.decrementRemainingTurnsInJail())
+        player.isInJail = false
+        assertPlayerIsNotInJail(player)
+    }
+
+    private fun assertPlayerIsNotInJail(player: Player) {
+        assertFalse(player.isInJail)
+        assertEquals(0, player.remainingTurnsInJail)
+    }
+
+    @Test
+    fun `isPayingGetOutOfJailEarlyFee returns false if player is not in jail`() {
+        val player = Player("Cookie Monster", money = 100)
+        assertFalse(player.isInJail)
+        assertFalse(player.isPayingGetOutOfJailEarlyFee(50))
+    }
+
+    @Test
+    fun `isPayingGetOutOfJailEarlyFee returns false if player is in jail but does not have enough money to pay the fine`() {
+        val player = Player("Cookie Monster", money = 10)
+        player.isInJail = true
+        assertFalse(player.isPayingGetOutOfJailEarlyFee(50))
+    }
+
+    @Test
+    fun `isPayingGetOutOfJailEarlyFee returns true if player is in jail and can afford the fine`() {
+        val player = Player("Cookie Monster", money = 100)
+        player.isInJail = true
+        assertTrue(player.isPayingGetOutOfJailEarlyFee(50))
+    }
 }

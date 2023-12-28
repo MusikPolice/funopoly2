@@ -1,14 +1,18 @@
 package ca.jonathanfritz.monopoly.board
 
+import ca.jonathanfritz.monopoly.Config
 import ca.jonathanfritz.monopoly.Player
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Railroad
 import ca.jonathanfritz.monopoly.deed.Utility
-import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
 import kotlin.reflect.KClass
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 internal class BoardTest {
 
@@ -23,7 +27,7 @@ internal class BoardTest {
 
                 if (player.position == 10) {
                     // player can be just visiting if they landed on jail without being sent there
-                    assertFalse(player.inJail)
+                    assertFalse(player.isInJail)
                 }
             }
         }
@@ -56,7 +60,101 @@ internal class BoardTest {
         // if they had not been sent to jail 2x3=6, and they would be on Oriental Avenue
         assertEquals(3, dice.rollCount)
         assertEquals(10, player.position)
-        assertTrue(player.inJail)
+        assertTrue(player.isInJail)
+    }
+
+    @Test
+    fun `goToJail sets player state as expected`() {
+        val player = Player("Elmo", 500)
+        val board = Board(Bank())
+
+        board.goToJail(player)
+
+        assertTrue(player.isInJail)
+        assertEquals(10, player.position)
+        assertEquals(Tile.Jail::class, board.playerTile(player)::class)
+    }
+
+    @Test
+    fun `a player who is in jail but pays a get out of jail early fee proceeds with their turn as expected`() {
+        val config = Config()
+        val startingPlayerBalance = config.getOutOfJailEarlyFeeAmount * 2
+        val player = Player("Gordon", money = startingPlayerBalance)
+        val bank = Bank()
+        val fakeDice = FakeDice(2, 3)
+        val board = Board(bank, dice = fakeDice)
+        val startingBankBalance = bank.money
+        board.goToJail(player)
+
+        // this player is in jail, and will opt to pay the fee to get out early
+        board.executeRound(listOf(player))
+
+        // because they paid the fee, they are no longer in jail and proceeded around the board
+        assertFalse(player.isInJail)
+        assertEquals(Railroad.PennsylvaniaRailroad::class, (board.playerTile(player) as Tile.RailroadBuyable).deedClass)
+        assertEquals(startingPlayerBalance - config.getOutOfJailEarlyFeeAmount, player.money)
+        assertEquals(startingBankBalance + config.getOutOfJailEarlyFeeAmount, bank.money)
+
+        // the dice were rolled twice because doubles still grant another turn if the player pays to get out of jail early
+        assertEquals(2, fakeDice.rollCount)
+    }
+
+    @Test
+    fun `a player who is in jail and rolls doubles is released and proceeds with their turn as expected`() {
+        val config = Config()
+        val startingPlayerBalance = config.getOutOfJailEarlyFeeAmount - 10
+        val player = Player("Bert", money = startingPlayerBalance)
+        val bank = Bank()
+        val fakeDice = FakeDice(2)
+        val board = Board(bank, dice = fakeDice)
+        val startingBankBalance = bank.money
+        board.goToJail(player)
+
+        // this player is in jail and does not have enough money to pay the fee to pay the fee
+        board.executeRound(listOf(player))
+
+        // however they did roll doubles, so they are no longer in jail and can proceed around the board
+        assertFalse(player.isInJail)
+        assertEquals(Utility.ElectricCompany::class, (board.playerTile(player) as Tile.UtilityBuyable).deedClass)
+
+        // no fee was paid
+        assertEquals(startingPlayerBalance, player.money)
+        assertEquals(startingBankBalance, bank.money)
+
+        // the dice were only rolled once, because players don't get another turn if doubles are used to get out of jail
+        assertEquals(1, fakeDice.rollCount)
+    }
+
+    @Test
+    fun `a player who is in jail for three turns without rolling doubles, playing a card, or paying a fee is charged the fee and proceeds with their turn as expected`() {
+        val config = Config()
+        val player = NotUsingGetOutOfJailFreeCardPlayer("Ernie")
+        val startingPlayerBalance = player.money
+        val bank = Bank()
+        val fakeDice = FakeDice(3, 3, 3)
+        val board = Board(bank, dice = fakeDice)
+        val startingBankBalance = bank.money
+        board.goToJail(player)
+
+        // player takes two turns without leaving jail
+        (1 .. 2).forEach {
+            board.executeRound(listOf(player))
+            assertTrue(player.isInJail)
+            assertEquals(Tile.Jail::class, board.playerTile(player)::class)
+            assertEquals(3 - it, player.remainingTurnsInJail)
+            assertEquals(startingPlayerBalance, player.money)
+        }
+
+        // on the third turn, the player is charged a fee and released, proceeding with their turn as expected
+        board.executeRound(listOf(player))
+        assertFalse(player.isInJail)
+        assertEquals(Property.StatesAvenue::class, (board.playerTile(player) as Tile.PropertyBuyable).deedClass)
+        assertEquals(startingPlayerBalance - config.getOutOfJailEarlyFeeAmount, player.money)
+        assertEquals(startingBankBalance + config.getOutOfJailEarlyFeeAmount, bank.money)
+    }
+
+    private class NotUsingGetOutOfJailFreeCardPlayer(name: String): Player(name, 100) {
+        override fun isPayingGetOutOfJailEarlyFee(amount: Int) = false
     }
 
     @Test
