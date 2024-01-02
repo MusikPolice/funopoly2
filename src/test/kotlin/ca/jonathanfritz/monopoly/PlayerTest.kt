@@ -1,6 +1,5 @@
 package ca.jonathanfritz.monopoly
 
-import ca.jonathanfritz.monopoly.board.Bank
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Property.*
@@ -41,7 +40,7 @@ internal class PlayerTest {
             "Cash Only",
             money = 5000
         )
-        assertEquals(5000, cashOnly.networth())
+        assertEquals(5000, cashOnly.netWorth())
         assertEquals(200, cashOnly.incomeTaxAmount())
 
         val propertyOnly = Player(
@@ -53,7 +52,7 @@ internal class PlayerTest {
                 PennsylvaniaAvenue() to Player.Development()
             )
         )
-        assertEquals(880, propertyOnly.networth())
+        assertEquals(880, propertyOnly.netWorth())
         assertEquals(88, propertyOnly.incomeTaxAmount())
 
         val withHouses = Player(
@@ -62,7 +61,7 @@ internal class PlayerTest {
                 BalticAvenue() to Player.Development(numHouses = 2)
             )
         )
-        assertEquals(160, withHouses.networth())
+        assertEquals(160, withHouses.netWorth())
         assertEquals(16, withHouses.incomeTaxAmount())
 
         val withHotels = Player(
@@ -72,7 +71,7 @@ internal class PlayerTest {
                 BalticAvenue() to Player.Development(numHouses = 4, hotel = true)
             )
         )
-        assertEquals(570, withHotels.networth())
+        assertEquals(570, withHotels.netWorth())
         assertEquals(57, withHotels.incomeTaxAmount())
     }
 
@@ -126,10 +125,38 @@ internal class PlayerTest {
     }
 
     @Test
+    fun `isPayingGetOutOfJailEarlyFee returns false if player is in jail and can afford the fine and has get out of jail free card`() {
+        val player = Player("Cookie Monster", money = 100, hasGetOutOfJailFreeCard = true)
+        player.isInJail = true
+        assertFalse(player.isPayingGetOutOfJailEarlyFee(50))
+    }
+
+    @Test
     fun `isPayingGetOutOfJailEarlyFee returns true if player is in jail and can afford the fine`() {
         val player = Player("Cookie Monster", money = 100)
         player.isInJail = true
         assertTrue(player.isPayingGetOutOfJailEarlyFee(50))
+    }
+
+    @Test
+    fun `isUsingGetOutOfJailFreeCard returns false if not in jail`() {
+        val player = Player("Cookie Monster", money = 100, hasGetOutOfJailFreeCard = true)
+        assertFalse(player.isUsingGetOutOfJailFreeCard())
+    }
+
+    @Test
+    fun `isUsingGetOutOfJailFreeCard returns false if does not have card`() {
+        val player = Player("Cookie Monster", money = 100)
+        player.isInJail = true
+        assertFalse(player.isUsingGetOutOfJailFreeCard())
+    }
+
+    @Test
+    fun `isUsingGetOutOfJailFreeCard returns true if in jail and has card`() {
+        val player = Player("Cookie Monster", money = 100, hasGetOutOfJailFreeCard = true)
+        player.isInJail = true
+        assertTrue(player.isUsingGetOutOfJailFreeCard())
+        assertFalse(player.hasGetOutOfJailFreeCard)
     }
 
     @Test

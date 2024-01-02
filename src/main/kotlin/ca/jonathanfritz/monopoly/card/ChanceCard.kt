@@ -72,7 +72,7 @@ sealed class ChanceCard : Card() {
 
     object GetOutOfJailFree: ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
-            TODO("Not yet implemented")
+            player.hasGetOutOfJailFreeCard = true
         }
     }
 

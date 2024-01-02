@@ -100,13 +100,20 @@ internal class ChanceCardTest {
         val bank = Bank()
         val board = Board(listOf(player))
 
-        val bankPaysYouDividend = ChanceCard.BankPaysYouDividend
-        bankPaysYouDividend.onDraw(player, bank, board)
+        ChanceCard.BankPaysYouDividend.onDraw(player, bank, board)
 
         assertEquals(50, player.money)
     }
 
-    // TODO: GetOutOfJailFree test
+    @Test
+    fun `get out of jail free test`() {
+        val player = Player("Grover")
+        val bank = Bank()
+        val board = Board(listOf(player))
+
+        ChanceCard.GetOutOfJailFree.onDraw(player, bank, board)
+        assertTrue(player.hasGetOutOfJailFreeCard)
+    }
 
     @Test
     fun `go back three spaces test`() {

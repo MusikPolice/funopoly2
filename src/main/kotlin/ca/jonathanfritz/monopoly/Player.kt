@@ -19,7 +19,9 @@ open class Player(
     var position: Int = 0,
 
     // the properties that this player owns, along with their development state
-    val deeds: MutableMap<TitleDeed, Development> = mutableMapOf()
+    val deeds: MutableMap<TitleDeed, Development> = mutableMapOf(),
+
+    var hasGetOutOfJailFreeCard: Boolean = false
 ) {
 
     // true if the player is in jail (as opposed to just visiting)
@@ -49,7 +51,7 @@ open class Player(
     }.containsAll(colourGroup.titleDeeds().values)
 
     // net worth is all cash on hand, plus the price of all owned properties, plus the price of all developed buildings
-    fun networth(): Int {
+    fun netWorth(): Int {
         return money +
                 deeds.keys.sumOf { it.price } +
                 deeds.filter { it.key.isBuildable }.map { (deed, development) ->
@@ -60,17 +62,20 @@ open class Player(
     }
 
     // income tax is the lesser of $200 or 10% of net worth
-    fun incomeTaxAmount(): Int = ceil(min(200.0, networth() * 0.10)).toInt()
+    fun incomeTaxAmount(): Int = ceil(min(200.0, netWorth() * 0.10)).toInt()
 
     // returns true if the player has a get out of jail free card and intends to use it
     fun isUsingGetOutOfJailFreeCard(): Boolean {
-        // TODO: update this once the player can draw and hold a get out of jail free card from chance/community chest
+        if (isInJail && hasGetOutOfJailFreeCard) {
+            hasGetOutOfJailFreeCard = false
+            return true
+        }
         return false
     }
 
     // returns true if the player intends to pay a fine to get out of jail on this turn
     // TODO: there are some cases in which the player should stay in jail rather than paying the fine
-    open fun isPayingGetOutOfJailEarlyFee(amount: Int) = isInJail && remainingTurnsInJail > 0 && money > amount
+    open fun isPayingGetOutOfJailEarlyFee(amount: Int) = isInJail && !hasGetOutOfJailFreeCard && remainingTurnsInJail > 0 && money > amount
 
     // returns a Pair<num houses, num hotels> that includes developments on all owned properties
     fun countDevelopments(): Pair<Int, Int> =

@@ -38,10 +38,6 @@ class Bank (
         player.money -= amount
     }
 
-    fun useGetOutOfJailFreeCard(player: Player) {
-        TODO("Not yet implemented - need chest/community chest first!")
-    }
-
     fun sellPropertyToPlayer(deedClass: KClass<out TitleDeed>, player: Player) {
         val deed = titleDeeds.firstOrNull { it::class == deedClass }
             ?: throw PropertyOwnershipException("Bank does not have ${deedClass.simpleName}")

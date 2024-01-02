@@ -19,6 +19,29 @@ class Board(
     private val bank: Bank = Bank(),
     private val rng: Random = Random,
     private val dice: Dice = Dice(rng),
+
+    // the Chance deck. See https://monopoly.fandom.com/wiki/Chance#Cards
+    private val chance: Deck<ChanceCard> = Deck(
+        listOf(
+            ChanceCard.AdvanceToGo,
+            ChanceCard.AdvanceToProperty(IllinoisAvenue::class),
+            ChanceCard.AdvanceToProperty(StCharlesPlace::class),
+            ChanceCard.AdvanceToNearestUtility,
+            ChanceCard.AdvanceToNearestRailroad,
+            ChanceCard.AdvanceToNearestRailroad,
+            ChanceCard.BankPaysYouDividend,
+            ChanceCard.GetOutOfJailFree,
+            ChanceCard.GoBackThreeSpaces,
+            ChanceCard.GoToJail,
+            ChanceCard.GeneralRepairs,
+            ChanceCard.AdvanceToRailroad(ReadingRailroad::class),
+            ChanceCard.PoorTax,
+            ChanceCard.AdvanceToProperty(Boardwalk::class),
+            ChanceCard.ChairmanOfTheBoard,
+            ChanceCard.BuildingAndLoan
+        ), rng
+    ),
+
     private val config: Config = Config()
 ) {
     // the board is made of tiles, starting by convention with Go
@@ -65,28 +88,6 @@ class Board(
         PropertyBuyable(Boardwalk::class),
     )
 
-    // the Chance deck. See https://monopoly.fandom.com/wiki/Chance#Cards
-    private val chance: Deck<ChanceCard> = Deck(
-        listOf(
-            ChanceCard.AdvanceToGo,
-            ChanceCard.AdvanceToProperty(IllinoisAvenue::class),
-            ChanceCard.AdvanceToProperty(StCharlesPlace::class),
-            ChanceCard.AdvanceToNearestUtility,
-            ChanceCard.AdvanceToNearestRailroad,
-            ChanceCard.AdvanceToNearestRailroad,
-            ChanceCard.BankPaysYouDividend,
-            ChanceCard.GetOutOfJailFree,
-            ChanceCard.GoBackThreeSpaces,
-            ChanceCard.GoToJail,
-            ChanceCard.GeneralRepairs,
-            ChanceCard.AdvanceToRailroad(ReadingRailroad::class),
-            ChanceCard.PoorTax,
-            ChanceCard.AdvanceToProperty(Boardwalk::class),
-            ChanceCard.ChairmanOfTheBoard,
-            ChanceCard.BuildingAndLoan
-        ), rng
-    )
-
     // TODO
     private val communityChest: Deck<CommunityChestCard> = Deck(emptyList(), rng)
 
@@ -98,8 +99,6 @@ class Board(
             // the player can get out of jail early by using a Get Out of Jail Free card or by paying a fee
             if (player.isInJail && player.remainingTurnsInJail > 0) {
                 if (player.isUsingGetOutOfJailFreeCard()) {
-                    // TODO: test this once GooJFC is implemented
-                    bank.useGetOutOfJailFreeCard(player)
                     player.isInJail = false
                 } else if (player.isPayingGetOutOfJailEarlyFee(config.getOutOfJailEarlyFeeAmount)) {
                     bank.charge(player, config.getOutOfJailEarlyFeeAmount, "to get out of jail early")
@@ -221,11 +220,15 @@ class Board(
     private fun Player.positionOffset(offset: Int) =
         (position + offset).mod(tiles.size)
 
-    // TODO: test me
     fun drawChanceCard(player: Player) {
-        val card = chance.draw()
-        // TODO: if get out of jail free card was drawn AND a player has it in their inventory, draw another card to
-        //  effectively skip it without mutating the deck
+        // if get out of jail free card was drawn AND a player has it in their inventory, draw another card to
+        // skip the card without having to mutate the deck
+        var card: ChanceCard
+        do {
+            card = chance.draw()
+        } while (card is ChanceCard.GetOutOfJailFree && players.any { it.hasGetOutOfJailFreeCard })
+
+        println("\t\t${player.name} drew ${card::class.simpleName}")
         card.onDraw(player, bank, this)
     }
 
