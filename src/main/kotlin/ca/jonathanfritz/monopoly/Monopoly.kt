@@ -8,7 +8,7 @@ class Monopoly(
     private val players: List<Player>,
     private val rng: Random = Random.Default,
     private val bank: Bank = Bank(),
-    private val board: Board = Board(bank, rng = rng),
+    private val board: Board = Board(players, rng = rng),
     private val config: Config = Config()
 ) {
     init {
@@ -24,7 +24,7 @@ class Monopoly(
     fun executeGame() {
         (1 .. config.maxRounds).forEach { round ->
             println("\nRound $round:")
-            board.executeRound(players.filter { it.money > 0 })
+            board.executeRound()
 
             // TODO: capture some kind of game state after each round
             //  could be used for testing, debugging, post-game analysis, or eventually for animating individual games

@@ -1,47 +1,39 @@
 package ca.jonathanfritz.monopoly.board
 
 import ca.jonathanfritz.monopoly.*
+import ca.jonathanfritz.monopoly.board.Dice.*
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Railroad
 import ca.jonathanfritz.monopoly.deed.Utility
-import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestFactory
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 internal class BoardTest {
 
-    @TestFactory
-    fun `rolls from Go`(): List<DynamicTest> {
-        return (3 until 12).map { amount ->
-            DynamicTest.dynamicTest("Rolled $amount from Go") {
-                val player = Player("Oscar", money = 500)
-                val board = Board(Bank(), dice = FakeDice(amount))
-                board.executeRound(listOf(player))
-                assertEquals(amount, player.position)
+    @Test
+    fun `player who lands on Jail is just visiting`() {
+        val player = Player("Abbi", 0)
+        val fakeDice = FakeDice(Roll(9, 1))
+        val board = Board(listOf(player), dice = fakeDice)
+        board.executeRound()
 
-                if (player.position == 10) {
-                    // player can be just visiting if they landed on jail without being sent there
-                    assertFalse(player.isInJail)
-                }
-            }
-        }
+        board.assertPlayerOn(player, Tile.Jail::class)
+        assertFalse(player.isInJail)
     }
 
     @Test
     fun `rolling doubles grants another turn`() {
-        val player = Player("Elmo", 500)
+        val player = Player("Elmo", 200)
 
-        // the first two rolls are doubles, followed by a non-doubles roll
-        val dice = FakeDice(2, 2, 3)
-        val board = Board(Bank(), dice = dice)
-        board.executeRound(listOf(player))
+        // first two rolls are doubles, followed by a non-doubles roll
+        val fakeDice = FakeDice(Roll(2, 2), Roll(1, 1), Roll(2, 1))
+        val board = Board(listOf(player), dice = fakeDice)
+        board.executeRound()
 
-        // player is on chance
-        assertEquals(3, dice.rollCount)
-        assertEquals(7, player.position)
+        board.assertPlayerOnProperty(player, Property.ConnecticutAvenue::class)
+        assertEquals(3, fakeDice.rollCount)
     }
 
     @Test
@@ -49,13 +41,13 @@ internal class BoardTest {
         val player = Player("Abbi", 500)
 
         // no matter how many times this player rolls, they will always get 2 (doubles)
-        val dice = FakeDice(2, 2, 2)
-        val board = Board(Bank(), dice = dice)
-        board.executeRound(listOf(player))
+        val fakeDice = FakeDice(Roll(1, 1), Roll(1, 1), Roll(1, 1))
+        val board = Board(listOf(player), dice = fakeDice)
+        board.executeRound()
 
         // the player is in jail because they rolled three consecutive doubles
         // if they had not been sent to jail 2x3=6, and they would be on Oriental Avenue
-        assertEquals(3, dice.rollCount)
+        assertEquals(3, fakeDice.rollCount)
         assertEquals(10, player.position)
         assertTrue(player.isInJail)
     }
@@ -63,7 +55,7 @@ internal class BoardTest {
     @Test
     fun `goToJail sets player state as expected`() {
         val player = Player("Elmo", 500)
-        val board = Board(Bank())
+        val board = Board(listOf(player))
 
         board.goToJail(player)
 
@@ -77,20 +69,19 @@ internal class BoardTest {
         val config = Config()
         val startingPlayerBalance = config.getOutOfJailEarlyFeeAmount * 2
         val player = Player("Gordon", money = startingPlayerBalance)
-        val bank = Bank()
-        val fakeDice = FakeDice(2, 3)
-        val board = Board(bank, dice = fakeDice)
-        val startingBankBalance = bank.money
+        val bank = Bank(money = 0)
+        val fakeDice = FakeDice(Roll(1, 1), Roll(2,1))
+        val board = Board(listOf(player), bank = bank, dice = fakeDice)
         board.goToJail(player)
 
         // this player is in jail, and will opt to pay the fee to get out early
-        board.executeRound(listOf(player))
+        board.executeRound()
 
         // because they paid the fee, they are no longer in jail and proceeded around the board
         assertFalse(player.isInJail)
         assertEquals(Railroad.PennsylvaniaRailroad::class, (board.playerTile(player) as Tile.RailroadBuyable).deedClass)
         assertEquals(startingPlayerBalance - config.getOutOfJailEarlyFeeAmount, player.money)
-        assertEquals(startingBankBalance + config.getOutOfJailEarlyFeeAmount, bank.money)
+        assertEquals(config.getOutOfJailEarlyFeeAmount, bank.money)
 
         // the dice were rolled twice because doubles still grant another turn if the player pays to get out of jail early
         assertEquals(2, fakeDice.rollCount)
@@ -102,13 +93,13 @@ internal class BoardTest {
         val startingPlayerBalance = config.getOutOfJailEarlyFeeAmount - 10
         val player = Player("Bert", money = startingPlayerBalance)
         val bank = Bank()
-        val fakeDice = FakeDice(2)
-        val board = Board(bank, dice = fakeDice)
+        val fakeDice = FakeDice(Roll(1, 1))
+        val board = Board(listOf(player), dice = fakeDice,)
         val startingBankBalance = bank.money
         board.goToJail(player)
 
         // this player is in jail and does not have enough money to pay the fee to pay the fee
-        board.executeRound(listOf(player))
+        board.executeRound()
 
         // however they did roll doubles, so they are no longer in jail and can proceed around the board
         assertFalse(player.isInJail)
@@ -125,43 +116,39 @@ internal class BoardTest {
     @Test
     fun `a player who is in jail for three turns without rolling doubles, playing a card, or paying a fee is charged the fee and proceeds with their turn as expected`() {
         val config = Config()
-        val player = NotUsingGetOutOfJailFreeCardPlayer("Ernie")
-        val startingPlayerBalance = player.money
-        val bank = Bank()
-        val fakeDice = FakeDice(3, 3, 3)
-        val board = Board(bank, dice = fakeDice)
-        val startingBankBalance = bank.money
+        val player = NotUsingGetOutOfJailFreeCardPlayer("Ernie", 50)
+        val bank = Bank(money = 0)
+        val fakeDice = FakeDice(Roll(2,1 ), Roll(2,1 ), Roll(2,1 ))
+        val board = Board(listOf(player), bank = bank, dice = fakeDice)
         board.goToJail(player)
 
         // player takes two turns without leaving jail
         (1 .. 2).forEach {
-            board.executeRound(listOf(player))
+            board.executeRound()
             assertTrue(player.isInJail)
             assertEquals(Tile.Jail::class, board.playerTile(player)::class)
             assertEquals(3 - it, player.remainingTurnsInJail)
-            assertEquals(startingPlayerBalance, player.money)
+            assertEquals(50, player.money)
         }
 
         // on the third turn, the player is charged a fee and released, proceeding with their turn as expected
-        board.executeRound(listOf(player))
+        board.executeRound()
         assertFalse(player.isInJail)
         assertEquals(Property.StatesAvenue::class, (board.playerTile(player) as Tile.PropertyBuyable).deedClass)
-        assertEquals(startingPlayerBalance - config.getOutOfJailEarlyFeeAmount, player.money)
-        assertEquals(startingBankBalance + config.getOutOfJailEarlyFeeAmount, bank.money)
+        assertEquals(0, player.money)
+        assertEquals(config.getOutOfJailEarlyFeeAmount, bank.money)
     }
 
-    private class NotUsingGetOutOfJailFreeCardPlayer(name: String): Player(name, 100) {
+    private class NotUsingGetOutOfJailFreeCardPlayer(name: String, money: Int): Player(name, money) {
         override fun isPayingGetOutOfJailEarlyFee(amount: Int) = false
     }
 
     @Test
     fun `a player who passes go is awarded $200 salary`() {
         val player = Player("Grover")
-        val playerStartingBalance = player.money
-        val fakeDice = FakeDice(6)
-        val bank = Bank()
-        val bankStartingBalance = bank.money
-        val board = Board(bank, dice = fakeDice)
+        val fakeDice = FakeDice(Roll(5, 1))
+        val bank = Bank(money = 200)
+        val board = Board(listOf(player), bank = bank, dice = fakeDice)
 
         // initialize the test by moving the player to Park Place
         assertLandedOnProperty(
@@ -170,20 +157,18 @@ internal class BoardTest {
         )
 
         // advance to Baltic Avenue, passing go in the process
-        board.executeRound(listOf(player))
+        board.executeRound()
         assertEquals(Property.BalticAvenue::class, (board.playerTile(player) as Tile.PropertyBuyable).deedClass)
-        assertEquals(playerStartingBalance + 200, player.money)
-        assertEquals(bankStartingBalance - 200, bank.money)
+        assertEquals(200, player.money)
+        assertEquals(0, bank.money)
     }
 
     @Test
     fun `a player who lands on go is awarded $200 salary`() {
         val player = Player("Super Grover")
-        val playerStartingBalance = player.money
-        val fakeDice = FakeDice(3)
-        val bank = Bank()
-        val bankStartingBalance = bank.money
-        val board = Board(bank, dice = fakeDice)
+        val fakeDice = FakeDice(Roll(2, 1))
+        val bank = Bank(money = 200)
+        val board = Board(listOf(player), bank = bank, dice = fakeDice)
 
         // initialize the test by moving the player to Park Place
         assertLandedOnProperty(
@@ -192,16 +177,16 @@ internal class BoardTest {
         )
 
         // advance to Go; salary should be awarded for landing on the tile
-        board.executeRound(listOf(player))
+        board.executeRound()
         assertEquals(Tile.Go::class, board.playerTile(player)::class)
-        assertEquals(playerStartingBalance + 200, player.money)
-        assertEquals(bankStartingBalance - 200, bank.money)
+        assertEquals(200, player.money)
+        assertEquals(0, bank.money)
     }
 
     @Test
     fun `advancePlayerBy moves the player the specified number of tiles`() {
         val player = Player("Oscar")
-        val board = Board(Bank())
+        val board = Board(listOf(player))
 
         // the player starts on Go, so advancing 12 positions should put them on Electric Company
         val (electricCompany, passedGo) = board.advancePlayerBy(player, 12)
@@ -239,7 +224,7 @@ internal class BoardTest {
     @Test
     fun `advance player to next railroad test`() {
         val player = Player("Gonger")
-        val board = Board(Bank())
+        val board = Board(listOf(player))
 
         // the player starts on go, so moving the player to the next railroad puts them on Reading Railroad
         assertLandedOnRailroad(
@@ -276,7 +261,7 @@ internal class BoardTest {
     @Test
     fun `advance player to next utility test`() {
         val player = Player("Cookie Monster")
-        val board = Board(Bank())
+        val board = Board(listOf(player))
 
         // the player starts on go, so moving the player to the next utility puts them on Electric Company
         assertLandedOnUtility(
@@ -301,7 +286,7 @@ internal class BoardTest {
     @Test
     fun `advance player to next chance test`() {
         val player = Player("Bert")
-        val board = Board(Bank())
+        val board = Board(listOf(player))
 
         // the player starts on go, so moving the player to the next chance leaves them on the first side
         assertLandedOnChance(
@@ -332,7 +317,7 @@ internal class BoardTest {
     @Test
     fun `advance player to next community chest test`() {
         val player = Player("Ernie")
-        val board = Board(Bank())
+        val board = Board(listOf(player))
 
         // the player starts on go, so moving the player to the next community chest leaves them on the first side
         assertLandedOnCommunityChest(
@@ -363,7 +348,7 @@ internal class BoardTest {
     @Test
     fun `advance player to property test`() {
         val player = Player("Kermit the Frog")
-        val board = Board(Bank())
+        val board = Board(listOf(player))
 
         assertLandedOnProperty(
             board.advancePlayerToProperty(player, Property.StJamesPlace::class),
@@ -390,7 +375,7 @@ internal class BoardTest {
     @Test
     fun `advance player to railroad test`() {
         val player = Player("Oscar the Grouch")
-        val board = Board(Bank())
+        val board = Board(listOf(player))
 
         assertLandedOnRailroad(
             board.advancePlayerToRailroad(player, Railroad.ShortlineRailroad::class),

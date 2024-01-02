@@ -88,9 +88,7 @@ fun Board.assertPlayerOnCommunityChest(player: Player, expectedSide: Int) {
     assertEquals(expectedSide, (tile as Tile.CommunityChest).side)
 }
 
-class FakeDice(private vararg val amounts: Int): Dice() {
+class FakeDice(private vararg val rolls: Roll): Dice() {
     var rollCount = 0
-    override fun roll(): Roll {
-        return Roll(amounts[rollCount++] - 1, 1)
-    }
+    override fun roll(): Roll = rolls[rollCount++]
 }

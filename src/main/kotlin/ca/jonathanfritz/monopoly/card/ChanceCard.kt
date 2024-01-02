@@ -109,7 +109,9 @@ sealed class ChanceCard : Card() {
     // You have been elected Chairman of the Board. Pay each player $50.
     object ChairmanOfTheBoard: ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
-            TODO("Not yet implemented - who has a reference to other players?")
+            board.players.filter { it != player }.forEach { other ->
+                player.pay(other, 50, "as Chairman of the Board")
+            }
         }
     }
 

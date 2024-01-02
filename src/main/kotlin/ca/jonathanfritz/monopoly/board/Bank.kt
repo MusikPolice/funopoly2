@@ -27,6 +27,8 @@ class Bank (
         player.money += amount
     }
 
+    // TODO: rather than throwing InsufficientFundsException, give player the chance to liquidate assets or mortgage
+    //  properties to cover the amount due
     fun charge(player: Player, amount: Int, reason: String = "") {
         if (amount < 0) throw IllegalArgumentException("Amount to charge must be greater than $0")
         if (player.money < amount) throw InsufficientFundsException("${player.name} has insufficient funds (${player.money} < $amount) $reason")

@@ -15,7 +15,7 @@ internal class ChanceCardTest {
     fun `advance to go test`() {
         val player = Player("Elmo")
         val bank = Bank()
-        val board = Board(bank)
+        val board = Board(listOf(player))
         val advanceToGo = ChanceCard.AdvanceToGo
 
         // our player draws a Chance card
@@ -34,7 +34,7 @@ internal class ChanceCardTest {
     fun `advance to property test`() {
         val player = Player("Big Bird")
         val bank = Bank()
-        val board = Board(bank)
+        val board = Board(listOf(player))
 
         // our player draws a Chance card
         assertLandedOnChance(
@@ -65,7 +65,7 @@ internal class ChanceCardTest {
     fun `advance to railroad test`() {
         val player = Player("Grover")
         val bank = Bank()
-        val board = Board(bank)
+        val board = Board(listOf(player))
 
         // our player draws a Chance card
         assertLandedOnChance(
@@ -98,7 +98,7 @@ internal class ChanceCardTest {
     fun `bank pays you dividend test`() {
         val player = Player("Big Bird")
         val bank = Bank()
-        val board = Board(bank)
+        val board = Board(listOf(player))
 
         val bankPaysYouDividend = ChanceCard.BankPaysYouDividend
         bankPaysYouDividend.onDraw(player, bank, board)
@@ -112,7 +112,7 @@ internal class ChanceCardTest {
     fun `go back three spaces test`() {
         val player = Player("Snuffy")
         val bank = Bank()
-        val board = Board(bank)
+        val board = Board(listOf(player))
 
         ChanceCard.GoBackThreeSpaces.onDraw(player, bank, board)
         board.assertPlayerOnProperty(
@@ -125,7 +125,7 @@ internal class ChanceCardTest {
     fun `go to jail test`() {
         val player = Player("Bert")
         val bank = Bank()
-        val board = Board(bank)
+        val board = Board(listOf(player))
 
         ChanceCard.GoToJail.onDraw(player, bank, board)
 
@@ -142,7 +142,7 @@ internal class ChanceCardTest {
     fun `general repairs test`() {
         val player = Player("Ernie", 5000)
         val bank = Bank()
-        val board = Board(bank)
+        val board = Board(listOf(player))
 
         // player has partially developed the light blue properties
         bank.sellPropertyToPlayer(Property.OrientalAvenue::class, player)
@@ -167,20 +167,31 @@ internal class ChanceCardTest {
     fun `poor tax test`() {
         val player = Player("Elmo", 15)
         val bank = Bank(money = 0)
-        val board = Board(bank)
+        val board = Board(listOf(player))
 
         ChanceCard.PoorTax.onDraw(player, bank, board)
         assertEquals(0, player.money)
         assertEquals(15, bank.money)
     }
 
-    // TODO: Chairman of the Board test
+    @Test
+    fun `chairman of the board test`() {
+        val source = Player("Bert", 100)
+        val target1 = Player("Ernie")
+        val target2 = Player("Big Bird")
+        val board = Board(listOf(source, target1, target2))
+
+        ChanceCard.ChairmanOfTheBoard.onDraw(source, Bank(), board)
+        assertEquals(0, source.money)
+        assertEquals(50, target1.money)
+        assertEquals(50, target2.money)
+    }
 
     @Test
     fun `building and loan test`() {
         val player = Player("Abbi", 0)
         val bank = Bank(money = 150)
-        val board = Board(bank)
+        val board = Board(listOf(player))
 
         ChanceCard.BuildingAndLoan.onDraw(player, bank, board)
         assertEquals(150, player.money)
@@ -191,7 +202,7 @@ internal class ChanceCardTest {
     fun `crossword competition test`() {
         val player = Player("Abbi", 0)
         val bank = Bank(money = 100)
-        val board = Board(bank)
+        val board = Board(listOf(player))
 
         ChanceCard.CrosswordCompetition.onDraw(player, bank, board)
         assertEquals(100, player.money)

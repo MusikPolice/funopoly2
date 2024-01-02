@@ -15,8 +15,9 @@ import kotlin.random.Random
 import kotlin.reflect.KClass
 
 class Board(
-    private val bank: Bank,
-    private val rng: Random = Random.Default,
+    val players: List<Player>,
+    private val bank: Bank = Bank(),
+    private val rng: Random = Random,
     private val dice: Dice = Dice(rng),
     private val config: Config = Config()
 ) {
@@ -89,7 +90,7 @@ class Board(
     // TODO
     private val communityChest: Deck<CommunityChestCard> = Deck(emptyList(), rng)
 
-    fun executeRound(players: List<Player>) {
+    fun executeRound() {
         // in each round, every player gets between one and three turns on which to affect the game state
         players.forEach { player ->
             println("\n\tStarting ${player.name}'s turn on ${player.tileName()}")
@@ -220,6 +221,7 @@ class Board(
     private fun Player.positionOffset(offset: Int) =
         (position + offset).mod(tiles.size)
 
+    // TODO: test me
     fun drawChanceCard(player: Player) {
         val card = chance.draw()
         // TODO: if get out of jail free card was drawn AND a player has it in their inventory, draw another card to

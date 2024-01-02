@@ -3,6 +3,7 @@ package ca.jonathanfritz.monopoly
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.TitleDeed
+import ca.jonathanfritz.monopoly.exception.InsufficientFundsException
 import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.reflect.KClass
@@ -72,9 +73,19 @@ open class Player(
     open fun isPayingGetOutOfJailEarlyFee(amount: Int) = isInJail && remainingTurnsInJail > 0 && money > amount
 
     // returns a Pair<num houses, num hotels> that includes developments on all owned properties
-    // TODO: test me
     fun countDevelopments(): Pair<Int, Int> =
         deeds.values.sumOf { it.numHouses } to deeds.values.sumOf { (if (it.hotel) 1 else 0).toInt() }
+
+    // TODO: rather than throw InsufficientFundsException here, attempt to liquidate assets or mortgage properties to
+    //  to cover the amount due. Pipe bank charges through that same logic!
+    fun pay(other: Player, amount: Int, reason: String = "") {
+        if (amount < 0) throw IllegalArgumentException("Amount to pay must be greater than $0")
+        if (money < amount) throw InsufficientFundsException("$name does not have $amount")
+
+        println("$name pays ${other.name} \$$amount $reason")
+        money -= amount
+        other.money += amount
+    }
 
     // TODO: rent calculation and logic dictating whether a house or hotel can be purchased will live inside of this Development object
     //  figure out how to generalize it for all types of TitleDeed, possibly with a when over sealed class type

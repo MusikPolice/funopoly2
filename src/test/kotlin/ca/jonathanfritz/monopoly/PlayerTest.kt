@@ -1,10 +1,13 @@
 package ca.jonathanfritz.monopoly
 
+import ca.jonathanfritz.monopoly.board.Bank
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Property.*
+import ca.jonathanfritz.monopoly.exception.InsufficientFundsException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 internal class PlayerTest {
 
@@ -127,5 +130,53 @@ internal class PlayerTest {
         val player = Player("Cookie Monster", money = 100)
         player.isInJail = true
         assertTrue(player.isPayingGetOutOfJailEarlyFee(50))
+    }
+
+    @Test
+    fun `pay player negative value throws exception`() {
+        val source = Player("Cookie", 10)
+        val target = Player("Elmo")
+
+        assertThrows<IllegalArgumentException> {
+            source.pay(target, -10)
+        }
+
+        assertEquals(10, source.money)
+        assertEquals(0, target.money)
+    }
+
+    @Test
+    fun `pay player zero doesn't change balances`() {
+        val source = Player("Cookie", 10)
+        val target = Player("Elmo")
+
+        source.pay(target, 0)
+
+        assertEquals(10, source.money)
+        assertEquals(0, target.money)
+    }
+
+    @Test
+    fun `pay more money than available throws InsufficientFundsException`() {
+        val source = Player("Cookie", 10)
+        val target = Player("Elmo")
+
+        assertThrows<InsufficientFundsException> {
+            source.pay(target, 20)
+        }
+
+        assertEquals(10, source.money)
+        assertEquals(0, target.money)
+    }
+
+    @Test
+    fun `pay player test`() {
+        val source = Player("Cookie", 10)
+        val target = Player("Elmo")
+
+        source.pay(target, 10)
+
+        assertEquals(0, source.money)
+        assertEquals(10, target.money)
     }
 }
