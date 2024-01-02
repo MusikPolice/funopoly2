@@ -71,11 +71,16 @@ open class Player(
     // TODO: there are some cases in which the player should stay in jail rather than paying the fine
     open fun isPayingGetOutOfJailEarlyFee(amount: Int) = isInJail && remainingTurnsInJail > 0 && money > amount
 
+    // returns a Pair<num houses, num hotels> that includes developments on all owned properties
+    // TODO: test me
+    fun countDevelopments(): Pair<Int, Int> =
+        deeds.values.sumOf { it.numHouses } to deeds.values.sumOf { (if (it.hotel) 1 else 0).toInt() }
+
     // TODO: rent calculation and logic dictating whether a house or hotel can be purchased will live inside of this Development object
     //  figure out how to generalize it for all types of TitleDeed, possibly with a when over sealed class type
     data class Development(
-        val numHouses: Int = 0,
-        val hotel: Boolean = false,
-        val mortgaged: Boolean = false
+        var numHouses: Int = 0,
+        var hotel: Boolean = false,
+        var mortgaged: Boolean = false
     )
 }

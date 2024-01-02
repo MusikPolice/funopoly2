@@ -1,4 +1,4 @@
-package ca.jonathanfritz.monopoly.board
+package ca.jonathanfritz.monopoly.card
 
 import org.junit.jupiter.api.Test
 import kotlin.random.Random

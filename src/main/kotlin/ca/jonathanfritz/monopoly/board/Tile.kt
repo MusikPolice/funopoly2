@@ -11,7 +11,7 @@ sealed class Tile {
 
     abstract fun onLanding(player: Player, bank: Bank, board: Board)
 
-    class Go: Tile() {
+    object Go : Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             // TODO: nothing special happens here unless we're playing with house rules that double salary when the player lands on go
             println("\t\t${player.name} landed on Go")
@@ -38,7 +38,7 @@ sealed class Tile {
         }
     }
 
-    class IncomeTax: Tile() {
+    object IncomeTax : Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             val amount = player.incomeTaxAmount()
             bank.charge(player, amount, "in income tax")
@@ -48,32 +48,32 @@ sealed class Tile {
     class Chance(val side: Int): Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on Chance (side $side)")
-            // TODO: draw a card and do what it says
+            board.drawChanceCard(player)
         }
     }
 
-    class Jail: Tile() {
+    object Jail : Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             // the player is just visiting, so this is a no-op
             println("\t\t${player.name} landed on Jail")
         }
     }
 
-    class FreeParking: Tile() {
+    object FreeParking : Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             // this does nothing unless house rule that awards the pot is active
             println("\t\t${player.name} landed on FreeParking")
         }
     }
 
-    class GoToJail: Tile() {
+    object GoToJail : Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on GoToJail")
             board.goToJail(player)
         }
     }
 
-    class LuxuryTax: Tile() {
+    object LuxuryTax : Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             bank.charge(player, 100, "in luxury tax")
         }

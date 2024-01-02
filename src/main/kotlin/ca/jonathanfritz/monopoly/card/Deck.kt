@@ -1,4 +1,4 @@
-package ca.jonathanfritz.monopoly.board
+package ca.jonathanfritz.monopoly.card
 
 import kotlin.random.Random
 

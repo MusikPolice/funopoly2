@@ -14,7 +14,7 @@ class Monopoly(
     init {
         players.forEach { player ->
             // the bank grants each player $1500 starting cash
-            bank.pay(player, 1500)
+            bank.pay(player, 1500, "starting salary")
 
             // each player starts on Go
             player.position = 0

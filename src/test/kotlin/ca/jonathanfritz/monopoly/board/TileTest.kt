@@ -11,7 +11,7 @@ internal class TileTest {
     fun `income tax tile charges player upon landing`() {
         val player = Player("Big Bird", 100)
         val bank = Bank()
-        val incomeTax = Tile.IncomeTax()
+        val incomeTax = Tile.IncomeTax
         val bankStartingBalance = bank.money
 
         incomeTax.onLanding(player, bank, Board(bank))
@@ -24,7 +24,7 @@ internal class TileTest {
     fun `luxury tax tile charges player upon landing`() {
         val player = Player("Snuffy", 200)
         val bank = Bank()
-        val luxuryTax = Tile.LuxuryTax()
+        val luxuryTax = Tile.LuxuryTax
         val bankStartingBalance = bank.money
 
         luxuryTax.onLanding(player, bank, Board(bank))
@@ -38,7 +38,7 @@ internal class TileTest {
         val player = Player("Ernie")
         val bank = Bank()
         val board = Board(bank)
-        val goToJail = Tile.GoToJail()
+        val goToJail = Tile.GoToJail
 
         goToJail.onLanding(player, bank, board)
         assertTrue(player.isInJail)

@@ -1,14 +1,12 @@
 package ca.jonathanfritz.monopoly.board
 
-import ca.jonathanfritz.monopoly.Config
-import ca.jonathanfritz.monopoly.Player
+import ca.jonathanfritz.monopoly.*
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Railroad
 import ca.jonathanfritz.monopoly.deed.Utility
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
-import kotlin.reflect.KClass
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -157,20 +155,85 @@ internal class BoardTest {
     }
 
     @Test
+    fun `a player who passes go is awarded $200 salary`() {
+        val player = Player("Grover")
+        val playerStartingBalance = player.money
+        val fakeDice = FakeDice(6)
+        val bank = Bank()
+        val bankStartingBalance = bank.money
+        val board = Board(bank, dice = fakeDice)
+
+        // initialize the test by moving the player to Park Place
+        assertLandedOnProperty(
+            board.advancePlayerToProperty(player, Property.ParkPlace::class),
+            Property.ParkPlace::class
+        )
+
+        // advance to Baltic Avenue, passing go in the process
+        board.executeRound(listOf(player))
+        assertEquals(Property.BalticAvenue::class, (board.playerTile(player) as Tile.PropertyBuyable).deedClass)
+        assertEquals(playerStartingBalance + 200, player.money)
+        assertEquals(bankStartingBalance - 200, bank.money)
+    }
+
+    @Test
+    fun `a player who lands on go is awarded $200 salary`() {
+        val player = Player("Super Grover")
+        val playerStartingBalance = player.money
+        val fakeDice = FakeDice(3)
+        val bank = Bank()
+        val bankStartingBalance = bank.money
+        val board = Board(bank, dice = fakeDice)
+
+        // initialize the test by moving the player to Park Place
+        assertLandedOnProperty(
+            board.advancePlayerToProperty(player, Property.ParkPlace::class),
+            Property.ParkPlace::class
+        )
+
+        // advance to Go; salary should be awarded for landing on the tile
+        board.executeRound(listOf(player))
+        assertEquals(Tile.Go::class, board.playerTile(player)::class)
+        assertEquals(playerStartingBalance + 200, player.money)
+        assertEquals(bankStartingBalance - 200, bank.money)
+    }
+
+    @Test
     fun `advancePlayerBy moves the player the specified number of tiles`() {
         val player = Player("Oscar")
         val board = Board(Bank())
 
         // the player starts on Go, so advancing 12 positions should put them on Electric Company
-        val (tile, passedGo) = board.advancePlayerBy(player, 12)
-        assertEquals(Tile.UtilityBuyable::class, tile::class)
-        assertEquals(Utility.ElectricCompany::class, (tile as Tile.Buyable).deedClass)
+        val (electricCompany, passedGo) = board.advancePlayerBy(player, 12)
+        assertEquals(Tile.UtilityBuyable::class, electricCompany::class)
+        assertEquals(Utility.ElectricCompany::class, (electricCompany as Tile.Buyable).deedClass)
         assertFalse(passedGo)
 
-        // moving another 28 tiles should put the player on Go
-        val (tile2, passedGo2) = board.advancePlayerBy(player, 28)
-        assertEquals(Tile.Go::class, tile2::class)
-        assertTrue(passedGo2)
+        // moving another 25 tiles should put the player on Park Place
+        assertLandedOnProperty(
+            board.advancePlayerBy(player, 25),
+            Property.ParkPlace::class
+        )
+
+        // moving another 4 tiles passes go and puts the player on Mediterranean Avenuue
+        assertLandedOnProperty(
+            board.advancePlayerBy(player, 4),
+            Property.MediterraneanAvenue::class,
+            expectedPassedGo = true
+        )
+
+        // moving back 2 tiles puts the player on Boardwalk without passing go (because they're going in the wrong direction)
+        assertLandedOnProperty(
+            board.advancePlayerBy(player, -2),
+            Property.Boardwalk::class
+        )
+
+        // finally, moving forward 1 tile puts the player on Go, which counts as having passed it
+        assertLandedOnTile(
+            board.advancePlayerBy(player, 1),
+            Tile.Go::class,
+            expectedPassedGo = true
+        )
     }
 
     @Test
@@ -180,31 +243,31 @@ internal class BoardTest {
 
         // the player starts on go, so moving the player to the next railroad puts them on Reading Railroad
         assertLandedOnRailroad(
-            board.advancePlayerToNext(player, Tile.RailroadBuyable::class),
+            board.advancePlayerToTile(player, Tile.RailroadBuyable::class),
             Railroad.ReadingRailroad::class
         )
 
         // the next railroad is Pennsylvania Railroad
         assertLandedOnRailroad(
-            board.advancePlayerToNext(player, Tile.RailroadBuyable::class),
+            board.advancePlayerToTile(player, Tile.RailroadBuyable::class),
             Railroad.PennsylvaniaRailroad::class
         )
 
         // followed by B&O Railroad
         assertLandedOnRailroad(
-            board.advancePlayerToNext(player, Tile.RailroadBuyable::class),
+            board.advancePlayerToTile(player, Tile.RailroadBuyable::class),
             Railroad.BAndORailroad::class
         )
 
         // and then Short Line Railroad
         assertLandedOnRailroad(
-            board.advancePlayerToNext(player, Tile.RailroadBuyable::class),
+            board.advancePlayerToTile(player, Tile.RailroadBuyable::class),
             Railroad.ShortlineRailroad::class
         )
 
         // one more puts us back on Reading Railroad, this time having passed Go
         assertLandedOnRailroad(
-            board.advancePlayerToNext(player, Tile.RailroadBuyable::class),
+            board.advancePlayerToTile(player, Tile.RailroadBuyable::class),
             Railroad.ReadingRailroad::class,
             expectedPassedGo = true
         )
@@ -217,19 +280,19 @@ internal class BoardTest {
 
         // the player starts on go, so moving the player to the next utility puts them on Electric Company
         assertLandedOnUtility(
-            board.advancePlayerToNext(player, Tile.UtilityBuyable::class),
+            board.advancePlayerToTile(player, Tile.UtilityBuyable::class),
             Utility.ElectricCompany::class
         )
 
         // the next utility is Water Works
         assertLandedOnUtility(
-            board.advancePlayerToNext(player, Tile.UtilityBuyable::class),
+            board.advancePlayerToTile(player, Tile.UtilityBuyable::class),
             Utility.WaterWorks::class
         )
 
         // one more puts us back on Electric Company, this time having passed Go
         assertLandedOnUtility(
-            board.advancePlayerToNext(player, Tile.UtilityBuyable::class),
+            board.advancePlayerToTile(player, Tile.UtilityBuyable::class),
             Utility.ElectricCompany::class,
             expectedPassedGo = true
         )
@@ -242,25 +305,25 @@ internal class BoardTest {
 
         // the player starts on go, so moving the player to the next chance leaves them on the first side
         assertLandedOnChance(
-            board.advancePlayerToNext(player, Tile.Chance::class),
+            board.advancePlayerToTile(player, Tile.Chance::class),
             1
         )
 
         // the next chance is on the third side
         assertLandedOnChance(
-            board.advancePlayerToNext(player, Tile.Chance::class),
+            board.advancePlayerToTile(player, Tile.Chance::class),
             3
         )
 
         // there's another on the fourth side
         assertLandedOnChance(
-            board.advancePlayerToNext(player, Tile.Chance::class),
+            board.advancePlayerToTile(player, Tile.Chance::class),
             4
         )
 
         // one more puts us back on the first side, this time having passed Go
         assertLandedOnChance(
-            board.advancePlayerToNext(player, Tile.Chance::class),
+            board.advancePlayerToTile(player, Tile.Chance::class),
             1,
             expectedPassedGo = true
         )
@@ -273,96 +336,71 @@ internal class BoardTest {
 
         // the player starts on go, so moving the player to the next community chest leaves them on the first side
         assertLandedOnCommunityChest(
-            board.advancePlayerToNext(player, Tile.CommunityChest::class),
+            board.advancePlayerToTile(player, Tile.CommunityChest::class),
             1
         )
 
         // the next chance is on the second side
         assertLandedOnCommunityChest(
-            board.advancePlayerToNext(player, Tile.CommunityChest::class),
+            board.advancePlayerToTile(player, Tile.CommunityChest::class),
             2
         )
 
         // there's another on the fourth side
         assertLandedOnCommunityChest(
-            board.advancePlayerToNext(player, Tile.CommunityChest::class),
+            board.advancePlayerToTile(player, Tile.CommunityChest::class),
             4
         )
 
         // one more puts us back on the first side, this time having passed Go
         assertLandedOnCommunityChest(
-            board.advancePlayerToNext(player, Tile.CommunityChest::class),
+            board.advancePlayerToTile(player, Tile.CommunityChest::class),
             1,
             expectedPassedGo = true
         )
     }
 
     @Test
-    fun `advance to property test`() {
+    fun `advance player to property test`() {
         val player = Player("Kermit the Frog")
         val board = Board(Bank())
 
         assertLandedOnProperty(
-            board.advancePlayerTo(player, Property.StJamesPlace::class),
+            board.advancePlayerToProperty(player, Property.StJamesPlace::class),
             Property.StJamesPlace::class
         )
 
         assertLandedOnProperty(
-            board.advancePlayerTo(player, Property.AtlanticAvenue::class),
+            board.advancePlayerToProperty(player, Property.AtlanticAvenue::class),
             Property.AtlanticAvenue::class
         )
 
         assertLandedOnProperty(
-            board.advancePlayerTo(player, Property.Boardwalk::class),
+            board.advancePlayerToProperty(player, Property.Boardwalk::class),
             Property.Boardwalk::class
         )
 
         assertLandedOnProperty(
-            board.advancePlayerTo(player, Property.OrientalAvenue::class),
+            board.advancePlayerToProperty(player, Property.OrientalAvenue::class),
             Property.OrientalAvenue::class,
             expectedPassedGo = true
         )
     }
 
-    private fun assertLandedOnRailroad(actual: Pair<Tile, Boolean>, expectedRailroad: KClass<out Railroad>, expectedPassedGo: Boolean = false) {
-        val (tile, passedGo) = actual
-        assertEquals(Tile.RailroadBuyable::class, tile::class)
-        assertEquals(expectedRailroad, (tile as Tile.Buyable).deedClass)
-        assertEquals(expectedPassedGo, passedGo)
-    }
+    @Test
+    fun `advance player to railroad test`() {
+        val player = Player("Oscar the Grouch")
+        val board = Board(Bank())
 
-    private fun assertLandedOnUtility(actual: Pair<Tile, Boolean>, expectedUtility: KClass<out Utility>, expectedPassedGo: Boolean = false) {
-        val (tile, passedGo) = actual
-        assertEquals(Tile.UtilityBuyable::class, tile::class)
-        assertEquals(expectedUtility, (tile as Tile.Buyable).deedClass)
-        assertEquals(expectedPassedGo, passedGo)
-    }
+        assertLandedOnRailroad(
+            board.advancePlayerToRailroad(player, Railroad.ShortlineRailroad::class),
+            Railroad.ShortlineRailroad::class
+        )
 
-    private fun assertLandedOnChance(actual: Pair<Tile, Boolean>, expectedSide: Int, expectedPassedGo: Boolean = false) {
-        val (tile, passedGo) = actual
-        assertEquals(Tile.Chance::class, tile::class)
-        assertEquals(expectedSide, (tile as Tile.Chance).side)
-        assertEquals(expectedPassedGo, passedGo)
-    }
-
-    private fun assertLandedOnCommunityChest(actual: Pair<Tile, Boolean>, expectedSide: Int, expectedPassedGo: Boolean = false) {
-        val (tile, passedGo) = actual
-        assertEquals(Tile.CommunityChest::class, tile::class)
-        assertEquals(expectedSide, (tile as Tile.CommunityChest).side)
-        assertEquals(expectedPassedGo, passedGo)
-    }
-
-    private fun assertLandedOnProperty(actual: Pair<Tile, Boolean>, expectedProperty: KClass<out Property>, expectedPassedGo: Boolean = false) {
-        val (tile, passedGo) = actual
-        assertEquals(Tile.PropertyBuyable::class, tile::class)
-        assertEquals(expectedProperty, (tile as Tile.Buyable).deedClass)
-        assertEquals(expectedPassedGo, passedGo)
-    }
-
-    private class FakeDice(vararg val rolls: Int): Dice() {
-        var rollCount = 0
-        override fun roll(): Roll {
-            return Roll(rolls[rollCount++] - 1, 1)
-        }
+        assertLandedOnRailroad(
+            board.advancePlayerToRailroad(player, Railroad.ReadingRailroad::class),
+            Railroad.ReadingRailroad::class,
+            expectedPassedGo = true
+        )
     }
 }
