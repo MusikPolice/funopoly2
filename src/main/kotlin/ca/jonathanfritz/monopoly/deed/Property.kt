@@ -1,5 +1,7 @@
 package ca.jonathanfritz.monopoly.deed
 
+import ca.jonathanfritz.monopoly.Player
+import ca.jonathanfritz.monopoly.board.Dice
 import ca.jonathanfritz.monopoly.deed.ColourGroup.*
 import kotlin.reflect.KClass
 
@@ -45,6 +47,8 @@ sealed class Property(
     class ParkPlace : Property(DarkBlue, 350, 175, 200, 35, 175, 500, 110, 1300, 1500)
     class Boardwalk : Property(DarkBlue, 400, 200, 200, 50, 200, 600, 1400, 1700, 2000)
 
+    override val isBuildable: Boolean = true
+
     // uses reflection to build a list of all instances of the sealed class once at initialization time
     // this basically mimics the way that an enum's elements can be accessed, while still allowing for the use of inheritance
     companion object {
@@ -52,9 +56,18 @@ sealed class Property(
         fun <P: Property> of(kClass: KClass<P>) = values.getValue(kClass)
     }
 
-    // if all properties in a set are owned, rent on undeveloped properties doubles
-    val rentNoHouseWithMonopoly = rentNoHouse * 2
-
-    // lookup the appropriate rent based on the number of houses
     private val houseRents = listOf(rentNoHouse, rentOneHouse, rentTwoHouse, rentThreeHouse, rentFourHouse)
+
+    override fun calculateRent(owner: Player, diceRoll: Dice.Roll): Int {
+        val development = owner.getDevelopment(this::class)
+        return if (development.isMortgaged) {
+            0
+        } else if (development.hasHotel) {
+            rentHotel
+        } else if (development.numHouses == 0 && owner.hasMonopoly(this.colourGroup)) {
+            rentNoHouse * 2
+        } else {
+            houseRents[development.numHouses]
+        }
+    }
 }

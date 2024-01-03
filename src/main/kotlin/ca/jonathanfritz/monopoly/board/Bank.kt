@@ -38,6 +38,8 @@ class Bank (
         player.money -= amount
     }
 
+    fun deed(deedClass: KClass<out TitleDeed>): TitleDeed? = titleDeeds.firstOrNull { it::class == deedClass }
+
     fun sellPropertyToPlayer(deedClass: KClass<out TitleDeed>, player: Player) {
         val deed = titleDeeds.firstOrNull { it::class == deedClass }
             ?: throw PropertyOwnershipException("Bank does not have ${deedClass.simpleName}")
@@ -104,12 +106,12 @@ class Bank (
         if (!player.hasMonopoly(deed.colourGroup)) throw MonopolyOwnershipException("${player.name} does not have monopoly on ${deed.colourGroup}")
 
         // the target property must already have four houses on it
-        if (player.deeds[deed]?.hotel == true) throw PropertyDevelopmentException("${player.name} has already built a hotel on ${propertyClass.simpleName}")
+        if (player.deeds[deed]?.hasHotel == true) throw PropertyDevelopmentException("${player.name} has already built a hotel on ${propertyClass.simpleName}")
         if (player.deeds[deed]?.numHouses != 4) throw PropertyDevelopmentException("${player.name} must build 4 houses on ${propertyClass.simpleName} before building a hotel")
 
         // hotels must be built evenly, so all properties in the monopoly group must have either four houses or a hotel
         if (!player.deeds.filter { deedDevelopment -> deedDevelopment.key.colourGroup == deed.colourGroup }
-            .all { deedDevelopment -> deedDevelopment.value.numHouses == 4 || deedDevelopment.value.hotel })
+            .all { deedDevelopment -> deedDevelopment.value.numHouses == 4 || deedDevelopment.value.hasHotel })
             throw PropertyDevelopmentException("Properties in ${deed.colourGroup} are not sufficiently developed to allow building a hotel on ${propertyClass.simpleName}")
 
         // the bank must have available hotels
@@ -120,7 +122,7 @@ class Bank (
         availableHotels -= 1
         player.deeds[deed]?.let {
             it.numHouses = 0
-            it.hotel = true
+            it.hasHotel = true
         }
     }
 }

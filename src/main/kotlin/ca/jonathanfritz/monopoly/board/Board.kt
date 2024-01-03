@@ -115,7 +115,7 @@ class Board(
     fun executeRound() {
         // in each round, every player gets between one and three turns on which to affect the game state
         players.forEach { player ->
-            println("\n\tStarting ${player.name}'s turn on ${player.tileName()}")
+            println("\n\tStarting ${player.name}'s turn ${if (player.isInJail) "In" else "on"} ${player.tileName()} with \$${player.money}")
 
             // the player can get out of jail early by using a Get Out of Jail Free card or by paying a fee
             if (player.isInJail && player.remainingTurnsInJail > 0) {
@@ -138,8 +138,8 @@ class Board(
             var doublesCount = 0
             do {
                 if (doublesCount > 0) println("\t${player.name} rolled doubles and gets another turn")
-                val roll = dice.roll()
-                if (roll.isDoubles) {
+                val diceRoll = dice.roll()
+                if (diceRoll.isDoubles) {
                     doublesCount++
 
                     if (player.isInJail) {
@@ -163,20 +163,20 @@ class Board(
                         bank.charge(player, config.getOutOfJailEarlyFeeAmount, "to get out ouf jail")
                     }
                 }
-                println("\t\t${player.name} rolled a ${roll.amount}")
+                println("\t\t${player.name} rolled a ${diceRoll.amount}")
 
                 // if the player is not in jail, they advance around the board
                 if (!player.isInJail) {
-                    val (tile, passedGo) = advancePlayerBy(player, roll.amount)
+                    val (tile, passedGo) = advancePlayerBy(player, diceRoll.amount)
                     if (passedGo) {
                         bank.pay(player, 200, "for passing go")
                     }
-                    tile.onLanding(player, bank, this)
+                    tile.onLanding(player, bank, this, diceRoll)
                 }
 
                 // TODO: trading, mortgaging, developing properties, etc
 
-            } while (roll.isDoubles && doublesCount < 3)
+            } while (diceRoll.isDoubles && doublesCount < 3)
         }
     }
 

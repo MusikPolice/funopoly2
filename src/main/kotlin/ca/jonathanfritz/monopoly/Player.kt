@@ -5,6 +5,7 @@ import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.TitleDeed
 import ca.jonathanfritz.monopoly.exception.InsufficientFundsException
+import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
 import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.reflect.KClass
@@ -47,10 +48,20 @@ open class Player(
 
     fun <T : TitleDeed> isOwner(titleDeed: KClass<T>): Boolean = deeds.keys.map { it::class }.contains(titleDeed)
 
+    fun getDevelopment(deedClass: KClass<out TitleDeed>): Development {
+        return deeds.entries.firstOrNull { it.key::class == deedClass }?.value
+            ?: throw PropertyOwnershipException("$name does not own ${deedClass.simpleName}")
+    }
+
     // a player has a monopoly on a property set if they own all properties that belong to that set
-    fun hasMonopoly(colourGroup: ColourGroup) = deeds.keys.filter { deed ->
-        deed.colourGroup == colourGroup
-    }.containsAll(colourGroup.titleDeeds().values)
+    fun hasMonopoly(colourGroup: ColourGroup) = deeds.keys
+        .filter { deed ->
+            deed.colourGroup == colourGroup
+        }.map {
+            it::class
+        }.containsAll(
+            colourGroup.titleDeeds().values.map { it::class }
+        )
 
     // net worth is all cash on hand, plus the price of all owned properties, plus the price of all developed buildings
     fun netWorth(): Int {
@@ -58,7 +69,7 @@ open class Player(
                 deeds.keys.sumOf { it.price } +
                 deeds.filter { it.key.isBuildable }.map { (deed, development) ->
                     val buildingCost = (deed as Property).buildingCost
-                    val developments = development.numHouses + if (development.hotel) 1 else 0
+                    val developments = development.numHouses + if (development.hasHotel) 1 else 0
                     buildingCost * developments
                 }.sum()
     }
@@ -84,7 +95,7 @@ open class Player(
 
     // returns a Pair<num houses, num hotels> that includes developments on all owned properties
     fun countDevelopments(): Pair<Int, Int> =
-        deeds.values.sumOf { it.numHouses } to deeds.values.sumOf { (if (it.hotel) 1 else 0).toInt() }
+        deeds.values.sumOf { it.numHouses } to deeds.values.sumOf { (if (it.hasHotel) 1 else 0).toInt() }
 
     // TODO: rather than throw InsufficientFundsException here, attempt to liquidate assets or mortgage properties to
     //  to cover the amount due. Pipe bank charges through that same logic!
@@ -92,16 +103,20 @@ open class Player(
         if (amount < 0) throw IllegalArgumentException("Amount to pay must be greater than $0")
         if (money < amount) throw InsufficientFundsException("$name does not have $amount")
 
-        println("$name pays ${other.name} \$$amount $reason")
+        println("\t\t$name pays ${other.name} \$$amount $reason")
         money -= amount
         other.money += amount
     }
+
+    // for now, every player buys up every property they can
+    // TODO: in the future, consider the amount of money on hand, maybe liquidate to raise money to complete a monopoly, etc
+    fun isBuying(deed: TitleDeed): Boolean = money > deed.price
 
     // TODO: rent calculation and logic dictating whether a house or hotel can be purchased will live inside of this Development object
     //  figure out how to generalize it for all types of TitleDeed, possibly with a when over sealed class type
     data class Development(
         var numHouses: Int = 0,
-        var hotel: Boolean = false,
-        var mortgaged: Boolean = false
+        var hasHotel: Boolean = false,
+        var isMortgaged: Boolean = false
     )
 }

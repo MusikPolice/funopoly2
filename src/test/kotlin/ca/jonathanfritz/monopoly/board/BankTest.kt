@@ -275,7 +275,7 @@ internal class BankTest {
 
         val development = player.deeds.filter { it.key::class == Property.ParkPlace::class }.values.first()
         assertEquals(1, development.numHouses)
-        assertFalse(development.hotel)
+        assertFalse(development.hasHotel)
         assertEquals(0, player.money)
     }
 
@@ -413,7 +413,7 @@ internal class BankTest {
         bank.buildHotel(Property.ParkPlace::class, player)
         bank.buildHotel(Property.Boardwalk::class, player)
 
-        assertTrue(player.deeds.values.all { it.numHouses == 0 && it.hotel })
+        assertTrue(player.deeds.values.all { it.numHouses == 0 && it.hasHotel })
         assertEquals(0, player.money)
     }
 }

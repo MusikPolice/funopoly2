@@ -4,7 +4,10 @@ import ca.jonathanfritz.monopoly.card.ChanceCard
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Property.*
+import ca.jonathanfritz.monopoly.deed.Railroad
+import ca.jonathanfritz.monopoly.deed.Utility
 import ca.jonathanfritz.monopoly.exception.InsufficientFundsException
+import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -25,51 +28,92 @@ internal class PlayerTest {
     }
 
     @Test
-    fun monopoliesTest() {
-        // this player owns Mediterranean and Baltic Avenues, giving them a Monopoly on the brown properties
-        val lowRoller = Player(
+    fun `player has monopoly on properties`() {
+        val player = Player(
             "Low Roller",
-            deeds = ColourGroup.Brown.titleDeeds().values.associateWith { Player.Development() }.toMutableMap()
+            deeds = mutableMapOf(
+                MediterraneanAvenue() to Player.Development(),
+                BalticAvenue() to Player.Development()
+            )
         )
-        assertTrue(lowRoller.hasMonopoly(ColourGroup.Brown))
-        ColourGroup.values().filterNot { it == ColourGroup.Brown }.forEach { assertFalse(lowRoller.hasMonopoly(it)) }
+        assertTrue(player.hasMonopoly(ColourGroup.Brown))
+        ColourGroup.values().filterNot { it == ColourGroup.Brown }.forEach { assertFalse(player.hasMonopoly(it)) }
     }
 
     @Test
-    fun networthTest() {
-        val cashOnly = Player(
+    fun `player has monopoly on railroads`() {
+        val player = Player(
+            "Engineer",
+            deeds = mutableMapOf(
+                Railroad.ReadingRailroad() to Player.Development(),
+                Railroad.PennsylvaniaRailroad() to Player.Development(),
+                Railroad.BAndORailroad() to Player.Development(),
+                Railroad.ShortlineRailroad() to Player.Development()
+            )
+        )
+        assertTrue(player.hasMonopoly(ColourGroup.Railroads))
+        ColourGroup.values().filterNot { it == ColourGroup.Railroads }.forEach { assertFalse(player.hasMonopoly(it)) }
+    }
+
+    @Test
+    fun `player has monopoly on utilities`() {
+        val player = Player(
+            "Industrialist",
+            deeds = mutableMapOf(
+                Utility.ElectricCompany() to Player.Development(),
+                Utility.WaterWorks() to Player.Development(),
+            )
+        )
+        assertTrue(player.hasMonopoly(ColourGroup.Utilities))
+        ColourGroup.values().filterNot { it == ColourGroup.Utilities }.forEach { assertFalse(player.hasMonopoly(it)) }
+    }
+
+    @Test
+    fun `player networth with cash only`() {
+        val player = Player(
             "Cash Only",
             money = 5000
         )
-        assertEquals(5000, cashOnly.netWorth())
-        assertEquals(200, cashOnly.incomeTaxAmount())
+        assertEquals(5000, player.netWorth())
+        assertEquals(200, player.incomeTaxAmount())
+    }
 
-        val propertyOnly = Player(
+    @Test
+    fun `player networth with property only`() {
+        val player = Player(
             "Property Only",
             deeds = mutableMapOf(
                 OrientalAvenue() to Player.Development(),
                 NewYorkAvenue() to Player.Development(),
-                AtlanticAvenue() to Player.Development(),
-                PennsylvaniaAvenue() to Player.Development()
+                Railroad.ReadingRailroad() to Player.Development(),
+                Utility.WaterWorks() to Player.Development()
             )
         )
-        assertEquals(880, propertyOnly.netWorth())
-        assertEquals(88, propertyOnly.incomeTaxAmount())
+        assertEquals(650, player.netWorth())
+        assertEquals(65, player.incomeTaxAmount())
+    }
 
-        val withHouses = Player(
+    @Test
+    fun `player networth with cash, property, and houses`() {
+        val player = Player(
             "Houses",
+            money = 200,
             deeds = mutableMapOf(
+                MediterraneanAvenue() to Player.Development(),
                 BalticAvenue() to Player.Development(numHouses = 2)
             )
         )
-        assertEquals(160, withHouses.netWorth())
-        assertEquals(16, withHouses.incomeTaxAmount())
+        assertEquals(420, player.netWorth())
+        assertEquals(42, player.incomeTaxAmount())
+    }
 
+    @Test
+    fun `player networth with cash, property, houses, and hotels`() {
         val withHotels = Player(
             "Hotels",
             deeds = mutableMapOf(
                 MediterraneanAvenue() to Player.Development(numHouses = 4),
-                BalticAvenue() to Player.Development(numHouses = 4, hotel = true)
+                BalticAvenue() to Player.Development(numHouses = 4, hasHotel = true)
             )
         )
         assertEquals(570, withHotels.netWorth())
@@ -205,5 +249,35 @@ internal class PlayerTest {
 
         assertEquals(0, source.money)
         assertEquals(10, target.money)
+    }
+
+    @Test
+    fun `getDevelopment for unowned property throws property ownership`() {
+        val player = Player("Cookie")
+        assertThrows<PropertyOwnershipException> {
+            player.getDevelopment(BalticAvenue::class)
+        }
+    }
+
+    @Test
+    fun `getDevelopment for owned property`() {
+        val expected = Player.Development()
+        val player = Player(
+            "Cookie",
+            deeds = mutableMapOf(BalticAvenue() to expected)
+        )
+        assertEquals(expected, player.getDevelopment(BalticAvenue::class))
+    }
+
+    @Test
+    fun `isBuying returns false if player cannot afford deed`() {
+        val player = Player("Ernie")
+        assertFalse(player.isBuying(MediterraneanAvenue()))
+    }
+
+    @Test
+    fun `isBuying returns true if player can afford deed`() {
+        val player = Player("Ernie", money = 100)
+        assertTrue(player.isBuying(MediterraneanAvenue()))
     }
 }
