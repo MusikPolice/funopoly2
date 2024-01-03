@@ -12,25 +12,6 @@ import org.junit.jupiter.api.Test
 internal class ChanceCardTest {
 
     @Test
-    fun `advance to go test`() {
-        val player = Player("Elmo")
-        val bank = Bank()
-        val board = Board(listOf(player))
-        val advanceToGo = ChanceCard.AdvanceToGo
-
-        // our player draws a Chance card
-        assertLandedOnChance(
-            board.advancePlayerToTile(player, Tile.Chance::class),
-            1
-        )
-
-        // the card advances the player to Go, where they receive a salary
-        advanceToGo.onDraw(player, bank, board)
-        board.assertPlayerOn(player, Tile.Go::class)
-        assertEquals(200, player.money)
-    }
-
-    @Test
     fun `advance to property test`() {
         val player = Player("Big Bird")
         val bank = Bank()
@@ -96,23 +77,22 @@ internal class ChanceCardTest {
 
     @Test
     fun `bank pays you dividend test`() {
-        val player = Player("Big Bird")
-        val bank = Bank()
-        val board = Board(listOf(player))
-
-        ChanceCard.BankPaysYouDividend.onDraw(player, bank, board)
-
-        assertEquals(50, player.money)
+        assertBankPaysPlayer(ChanceCard.BankPaysYouDividend, 50)
     }
 
     @Test
-    fun `get out of jail free test`() {
-        val player = Player("Grover")
+    fun `get out of jail free card test`() {
+        val player = Player("Abbi")
         val bank = Bank()
         val board = Board(listOf(player))
 
+        // grant the player a get out of jail free card
         ChanceCard.GetOutOfJailFree.onDraw(player, bank, board)
-        assertTrue(player.hasGetOutOfJailFreeCard)
+        assertFalse(board.chance.contains(ChanceCard.GetOutOfJailFree))
+
+        // if the player is in jail, they will play the newly granted card
+        player.isInJail = true
+        assertEquals(ChanceCard.GetOutOfJailFree, player.useGetOutOfJailFreeCard())
     }
 
     @Test
@@ -126,23 +106,6 @@ internal class ChanceCardTest {
             player,
             Property.ParkPlace::class
         )
-    }
-
-    @Test
-    fun `go to jail test`() {
-        val player = Player("Bert")
-        val bank = Bank()
-        val board = Board(listOf(player))
-
-        ChanceCard.GoToJail.onDraw(player, bank, board)
-
-        // player went directly to jail with no salary and is not "just visiting"
-        assertTrue(player.isInJail)
-        board.assertPlayerOn(
-            player,
-            Tile.Jail::class
-        )
-        assertEquals(0, player.money)
     }
 
     @Test
@@ -172,13 +135,7 @@ internal class ChanceCardTest {
 
     @Test
     fun `poor tax test`() {
-        val player = Player("Elmo", 15)
-        val bank = Bank(money = 0)
-        val board = Board(listOf(player))
-
-        ChanceCard.PoorTax.onDraw(player, bank, board)
-        assertEquals(0, player.money)
-        assertEquals(15, bank.money)
+        assertPlayerPaysBank(ChanceCard.PoorTax, 15)
     }
 
     @Test
@@ -196,23 +153,11 @@ internal class ChanceCardTest {
 
     @Test
     fun `building and loan test`() {
-        val player = Player("Abbi", 0)
-        val bank = Bank(money = 150)
-        val board = Board(listOf(player))
-
-        ChanceCard.BuildingAndLoan.onDraw(player, bank, board)
-        assertEquals(150, player.money)
-        assertEquals(0, bank.money)
+        assertBankPaysPlayer(ChanceCard.BuildingAndLoan, 150)
     }
 
     @Test
     fun `crossword competition test`() {
-        val player = Player("Abbi", 0)
-        val bank = Bank(money = 100)
-        val board = Board(listOf(player))
-
-        ChanceCard.CrosswordCompetition.onDraw(player, bank, board)
-        assertEquals(100, player.money)
-        assertEquals(0, bank.money)
+        assertBankPaysPlayer(ChanceCard.CrosswordCompetition, 100)
     }
 }

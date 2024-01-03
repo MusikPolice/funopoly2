@@ -1,5 +1,6 @@
 package ca.jonathanfritz.monopoly
 
+import ca.jonathanfritz.monopoly.card.ChanceCard
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Property.*
@@ -126,7 +127,7 @@ internal class PlayerTest {
 
     @Test
     fun `isPayingGetOutOfJailEarlyFee returns false if player is in jail and can afford the fine and has get out of jail free card`() {
-        val player = Player("Cookie Monster", money = 100, hasGetOutOfJailFreeCard = true)
+        val player = Player("Cookie Monster", money = 100, getOutOfJailFreeCards = mutableListOf(ChanceCard.GetOutOfJailFree))
         player.isInJail = true
         assertFalse(player.isPayingGetOutOfJailEarlyFee(50))
     }
@@ -139,24 +140,23 @@ internal class PlayerTest {
     }
 
     @Test
-    fun `isUsingGetOutOfJailFreeCard returns false if not in jail`() {
-        val player = Player("Cookie Monster", money = 100, hasGetOutOfJailFreeCard = true)
-        assertFalse(player.isUsingGetOutOfJailFreeCard())
+    fun `useGetOutOfJailFreeCard returns null if the player is not in jail`() {
+        val player = Player("Cookie Monster", money = 100, getOutOfJailFreeCards = mutableListOf(ChanceCard.GetOutOfJailFree))
+        assertNull(player.useGetOutOfJailFreeCard())
     }
 
     @Test
-    fun `isUsingGetOutOfJailFreeCard returns false if does not have card`() {
+    fun `UseGetOutOfJailFreeCard returns null if the player does not have a card to play`() {
         val player = Player("Cookie Monster", money = 100)
         player.isInJail = true
-        assertFalse(player.isUsingGetOutOfJailFreeCard())
+        assertNull(player.useGetOutOfJailFreeCard())
     }
 
     @Test
-    fun `isUsingGetOutOfJailFreeCard returns true if in jail and has card`() {
-        val player = Player("Cookie Monster", money = 100, hasGetOutOfJailFreeCard = true)
+    fun `useGetOutOfJailFreeCard returns a card if the player is in jail and has a card in their inventory`() {
+        val player = Player("Cookie Monster", money = 100, getOutOfJailFreeCards = mutableListOf(ChanceCard.GetOutOfJailFree))
         player.isInJail = true
-        assertTrue(player.isUsingGetOutOfJailFreeCard())
-        assertFalse(player.hasGetOutOfJailFreeCard)
+        assertEquals(ChanceCard.GetOutOfJailFree, player.useGetOutOfJailFreeCard())
     }
 
     @Test

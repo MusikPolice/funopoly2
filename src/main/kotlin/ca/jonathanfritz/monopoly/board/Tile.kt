@@ -34,7 +34,7 @@ sealed class Tile {
     class CommunityChest(val side: Int): Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on CommunityChest (side $side)")
-            // TODO: draw a card and do what it says
+            board.communityChest.draw().onDraw(player, bank, board)
         }
     }
 
@@ -48,7 +48,7 @@ sealed class Tile {
     class Chance(val side: Int): Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on Chance (side $side)")
-            board.drawChanceCard(player)
+            board.chance.draw().onDraw(player, bank, board)
         }
     }
 

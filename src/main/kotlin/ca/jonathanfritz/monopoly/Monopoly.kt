@@ -4,6 +4,13 @@ import ca.jonathanfritz.monopoly.board.Bank
 import ca.jonathanfritz.monopoly.board.Board
 import kotlin.random.Random
 
+// TODO:
+//  players purchase property when landing on a buyable
+//  rent calculations
+//  developing properties for fun and profit
+//  Player.liquidateAssets(amount: Int) should be the only thrower of InsufficientFundsException
+//  trading?
+//  start collecting stats on landings, rounds, networth deltas, etc
 class Monopoly(
     private val players: List<Player>,
     private val rng: Random = Random.Default,
@@ -33,7 +40,7 @@ class Monopoly(
 
     // TODO: add properties here that change gameplay to reflect deviations from the official rules that we want to simulate
     data class Config (
-        val maxRounds: Int = 10
+        val maxRounds: Int = 50
     )
 }
 

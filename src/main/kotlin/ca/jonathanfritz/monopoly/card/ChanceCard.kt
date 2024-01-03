@@ -6,18 +6,10 @@ import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.board.Tile
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Railroad
+import ca.jonathanfritz.monopoly.exception.InsufficientTokenException
 import kotlin.reflect.KClass
 
-// TODO: tests! also the rest of the implementation. and update the Chance tile to pull the deck
 sealed class ChanceCard : Card() {
-
-    // Advance to "Go". (Collect $200)
-    object AdvanceToGo : ChanceCard() {
-        override fun onDraw(player: Player, bank: Bank, board: Board) {
-            board.advancePlayerToTile(player, Tile.Go::class)
-            bank.pay(player, 200, "for passing go")
-        }
-    }
 
     // Advance to Illinois Ave. If you pass Go, collect $200.
     // Advance to St. Charles Place. If you pass Go, collect $200.
@@ -64,15 +56,17 @@ sealed class ChanceCard : Card() {
     }
 
     // Bank pays you dividend of $50.
-    object BankPaysYouDividend: ChanceCard() {
-        override fun onDraw(player: Player, bank: Bank, board: Board) {
-            bank.pay(player, 50, "bank dividend")
-        }
-    }
+    object BankPaysYouDividend: BankPaysYou(50, "bank dividend")
 
-    object GetOutOfJailFree: ChanceCard() {
+    // Get out of Jail Free - This card may be kept until needed or sold/traded
+    object GetOutOfJailFree: GetOutOfJailFreeCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
-            player.hasGetOutOfJailFreeCard = true
+            if (board.chance.remove(this)) {
+                player.grantGetOutOfJailFreeCard(this)
+                println("\t\t${player.name} added a Get out of Jail Free card to their inventory")
+            } else {
+                throw InsufficientTokenException("Failed to grant ${player.name} Get Out of Jail Free card: Card is not present in Chance deck")
+            }
         }
     }
 
@@ -80,13 +74,6 @@ sealed class ChanceCard : Card() {
     object GoBackThreeSpaces: ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             board.advancePlayerBy(player, -3)
-        }
-    }
-
-    // Go to Jail. Go directly to Jail. Do not pass GO, do not collect $200.
-    object GoToJail: ChanceCard() {
-        override fun onDraw(player: Player, bank: Bank, board: Board) {
-            board.goToJail(player)
         }
     }
 
@@ -100,11 +87,7 @@ sealed class ChanceCard : Card() {
     }
 
     // Pay poor tax of $15
-    object PoorTax: ChanceCard() {
-        override fun onDraw(player: Player, bank: Bank, board: Board) {
-            bank.charge(player, 15, "in poor tax")
-        }
-    }
+    object PoorTax: YouPayBank( 15, "in poor tax")
 
     // You have been elected Chairman of the Board. Pay each player $50.
     object ChairmanOfTheBoard: ChanceCard() {
@@ -116,17 +99,8 @@ sealed class ChanceCard : Card() {
     }
 
     // Building and loan matures. Receive $150.
-    object BuildingAndLoan: ChanceCard() {
-        override fun onDraw(player: Player, bank: Bank, board: Board) {
-            bank.pay(player, 150, "as building and loan matures")
-        }
-    }
+    object BuildingAndLoan: BankPaysYou(150, "as building and loan matures")
 
     // You have won a crossword competition. Collect $100.
-    object CrosswordCompetition: ChanceCard() {
-        override fun onDraw(player: Player, bank: Bank, board: Board) {
-            bank.pay(player, 100, "for winning a crossword competition")
-        }
-    }
-
+    object CrosswordCompetition: BankPaysYou(100, "for winning a crossword competition")
 }

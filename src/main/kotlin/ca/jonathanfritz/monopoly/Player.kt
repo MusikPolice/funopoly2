@@ -1,5 +1,6 @@
 package ca.jonathanfritz.monopoly
 
+import ca.jonathanfritz.monopoly.card.Card
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.TitleDeed
@@ -21,7 +22,8 @@ open class Player(
     // the properties that this player owns, along with their development state
     val deeds: MutableMap<TitleDeed, Development> = mutableMapOf(),
 
-    var hasGetOutOfJailFreeCard: Boolean = false
+    // any Get out of Jail Free cards that the player has in their inventory
+    private val getOutOfJailFreeCards: MutableList<Card.GetOutOfJailFreeCard> = mutableListOf()
 ) {
 
     // true if the player is in jail (as opposed to just visiting)
@@ -64,18 +66,21 @@ open class Player(
     // income tax is the lesser of $200 or 10% of net worth
     fun incomeTaxAmount(): Int = ceil(min(200.0, netWorth() * 0.10)).toInt()
 
-    // returns true if the player has a get out of jail free card and intends to use it
-    fun isUsingGetOutOfJailFreeCard(): Boolean {
-        if (isInJail && hasGetOutOfJailFreeCard) {
-            hasGetOutOfJailFreeCard = false
-            return true
+    // give the player a get out of jail free card for later use
+    fun grantGetOutOfJailFreeCard(card: Card.GetOutOfJailFreeCard) = getOutOfJailFreeCards.add(card)
+
+    // returns an instance of a Get out of Jail Free card if the player intends to use one, else null
+    fun useGetOutOfJailFreeCard(): Card.GetOutOfJailFreeCard? {
+        if (isInJail && getOutOfJailFreeCards.isNotEmpty()) {
+            println("\t\t$name uses a Get out of Jail Free card")
+            return getOutOfJailFreeCards.removeAt(0)
         }
-        return false
+        return null
     }
 
     // returns true if the player intends to pay a fine to get out of jail on this turn
     // TODO: there are some cases in which the player should stay in jail rather than paying the fine
-    open fun isPayingGetOutOfJailEarlyFee(amount: Int) = isInJail && !hasGetOutOfJailFreeCard && remainingTurnsInJail > 0 && money > amount
+    open fun isPayingGetOutOfJailEarlyFee(amount: Int) = isInJail && getOutOfJailFreeCards.isEmpty() && remainingTurnsInJail > 0 && money > amount
 
     // returns a Pair<num houses, num hotels> that includes developments on all owned properties
     fun countDevelopments(): Pair<Int, Int> =

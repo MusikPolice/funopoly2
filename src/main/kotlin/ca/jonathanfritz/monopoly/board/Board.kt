@@ -3,6 +3,7 @@ package ca.jonathanfritz.monopoly.board
 import ca.jonathanfritz.monopoly.Config
 import ca.jonathanfritz.monopoly.Player
 import ca.jonathanfritz.monopoly.board.Tile.*
+import ca.jonathanfritz.monopoly.card.Card
 import ca.jonathanfritz.monopoly.card.ChanceCard
 import ca.jonathanfritz.monopoly.card.CommunityChestCard
 import ca.jonathanfritz.monopoly.card.Deck
@@ -21,9 +22,9 @@ class Board(
     private val dice: Dice = Dice(rng),
 
     // the Chance deck. See https://monopoly.fandom.com/wiki/Chance#Cards
-    private val chance: Deck<ChanceCard> = Deck(
-        listOf(
-            ChanceCard.AdvanceToGo,
+    val chance: Deck<Card> = Deck(
+        mutableListOf(
+            Card.AdvanceToGo,
             ChanceCard.AdvanceToProperty(IllinoisAvenue::class),
             ChanceCard.AdvanceToProperty(StCharlesPlace::class),
             ChanceCard.AdvanceToNearestUtility,
@@ -32,13 +33,36 @@ class Board(
             ChanceCard.BankPaysYouDividend,
             ChanceCard.GetOutOfJailFree,
             ChanceCard.GoBackThreeSpaces,
-            ChanceCard.GoToJail,
+            Card.GoToJail,
             ChanceCard.GeneralRepairs,
             ChanceCard.AdvanceToRailroad(ReadingRailroad::class),
             ChanceCard.PoorTax,
             ChanceCard.AdvanceToProperty(Boardwalk::class),
             ChanceCard.ChairmanOfTheBoard,
             ChanceCard.BuildingAndLoan
+        ), rng
+    ),
+
+    // the Community Chest deck. See https://monopoly.fandom.com/wiki/Community_Chest#Cards
+    val communityChest: Deck<Card> = Deck(
+        mutableListOf(
+            Card.AdvanceToGo,
+            CommunityChestCard.BankErrorInYourFavour,
+            CommunityChestCard.DoctorsFees,
+            CommunityChestCard.SaleOfStock,
+            CommunityChestCard.GetOutOfJailFree,
+            Card.GoToJail,
+            CommunityChestCard.GrandOperaOpening,
+            CommunityChestCard.HolidayFundMatures,
+            CommunityChestCard.IncomeTaxRefund,
+            CommunityChestCard.YourBirthday,
+            CommunityChestCard.LifeInsurance,
+            CommunityChestCard.HospitalFees,
+            CommunityChestCard.SchoolFees,
+            CommunityChestCard.ConsultancyFees,
+            CommunityChestCard.StreetRepairs,
+            CommunityChestCard.BeautyContest,
+            CommunityChestCard.Inheritance
         ), rng
     ),
 
@@ -88,9 +112,6 @@ class Board(
         PropertyBuyable(Boardwalk::class),
     )
 
-    // TODO
-    private val communityChest: Deck<CommunityChestCard> = Deck(emptyList(), rng)
-
     fun executeRound() {
         // in each round, every player gets between one and three turns on which to affect the game state
         players.forEach { player ->
@@ -98,9 +119,16 @@ class Board(
 
             // the player can get out of jail early by using a Get Out of Jail Free card or by paying a fee
             if (player.isInJail && player.remainingTurnsInJail > 0) {
-                if (player.isUsingGetOutOfJailFreeCard()) {
+                val card = player.useGetOutOfJailFreeCard()
+                if (card != null) {
+                    // return the card to the appropriate deck and let the player out of jail
+                    when (card) {
+                        is ChanceCard.GetOutOfJailFree -> chance.add(card)
+                        is CommunityChestCard.GetOutOfJailFree -> communityChest.add(card)
+                    }
                     player.isInJail = false
                 } else if (player.isPayingGetOutOfJailEarlyFee(config.getOutOfJailEarlyFeeAmount)) {
+                    // charge the player a fee and let them out of jail
                     bank.charge(player, config.getOutOfJailEarlyFeeAmount, "to get out of jail early")
                     player.isInJail = false
                 }
@@ -219,17 +247,4 @@ class Board(
 
     private fun Player.positionOffset(offset: Int) =
         (position + offset).mod(tiles.size)
-
-    fun drawChanceCard(player: Player) {
-        // if get out of jail free card was drawn AND a player has it in their inventory, draw another card to
-        // skip the card without having to mutate the deck
-        var card: ChanceCard
-        do {
-            card = chance.draw()
-        } while (card is ChanceCard.GetOutOfJailFree && players.any { it.hasGetOutOfJailFreeCard })
-
-        println("\t\t${player.name} drew ${card::class.simpleName}")
-        card.onDraw(player, bank, this)
-    }
-
 }

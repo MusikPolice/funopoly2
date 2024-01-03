@@ -3,12 +3,13 @@ package ca.jonathanfritz.monopoly.board
 import ca.jonathanfritz.monopoly.*
 import ca.jonathanfritz.monopoly.board.Dice.*
 import ca.jonathanfritz.monopoly.card.ChanceCard
+import ca.jonathanfritz.monopoly.card.CommunityChestCard
 import ca.jonathanfritz.monopoly.card.Deck
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Railroad
 import ca.jonathanfritz.monopoly.deed.Utility
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -69,31 +70,37 @@ internal class BoardTest {
 
     @Test
     fun `a player who is in jail and opts to use a get out of jail free card proceeds with their turn as expected`() {
-        val player = Player("Oscar the Grouch", hasGetOutOfJailFreeCard = true)
-        val board = Board(listOf(player), dice = FakeDice(Roll(1, 2)))
+        val player = Player("Oscar the Grouch", getOutOfJailFreeCards = mutableListOf(ChanceCard.GetOutOfJailFree))
+        val board = Board(listOf(player), dice = FakeDice(Roll(1, 2)), chance = Deck(mutableListOf()))
         board.goToJail(player)
 
         // this player is in jail and will opt to use their get out of jail free card
         board.executeRound()
 
+        // player is no longer in jail and their get out of jail free card has been returned to the chance deck
         assertFalse(player.isInJail)
+        assertTrue(board.chance.contains(ChanceCard.GetOutOfJailFree))
+
+        // player has proceeded with their turn by rolling the dice and moving three spaces
         board.assertPlayerOnProperty(player, Property.StatesAvenue::class)
-        assertFalse(player.hasGetOutOfJailFreeCard)
         assertEquals(0, player.money)
     }
 
     @Test
     fun `a player who is in jail and opts to use a get out of jail free card can still roll doubles`() {
-        val player = Player("Oscar the Grouch", hasGetOutOfJailFreeCard = true)
+        val player = Player("Oscar the Grouch", getOutOfJailFreeCards = mutableListOf(ChanceCard.GetOutOfJailFree))
         val board = Board(listOf(player), dice = FakeDice(Roll(1, 1), Roll(2, 1)))
         board.goToJail(player)
 
         // this player is in jail and will opt to use their get out of jail free card
         board.executeRound()
 
+        // player is no longer in jail and their get out of jail free card has been returned to the chance deck
         assertFalse(player.isInJail)
+        assertTrue(board.chance.contains(ChanceCard.GetOutOfJailFree))
+
+        // player has proceeded with their turn by rolling a two followed by a three, moving a total of five spaces
         board.assertPlayerOnRailroad(player, Railroad.PennsylvaniaRailroad::class)
-        assertFalse(player.hasGetOutOfJailFreeCard)
         assertEquals(0, player.money)
     }
 
@@ -420,41 +427,5 @@ internal class BoardTest {
             Railroad.ReadingRailroad::class,
             expectedPassedGo = true
         )
-    }
-
-    @Test
-    fun `chance card is skipped if some player already has it in their inventory`() {
-        val player = Player("Elmo", hasGetOutOfJailFreeCard = true)
-        val bank = Bank()
-        val fixedRng = Random(2)
-        val board = Board(
-            listOf(player),
-            bank = bank,
-            chance = Deck(listOf(ChanceCard.GetOutOfJailFree, ChanceCard.CrosswordCompetition), fixedRng),
-            rng = fixedRng
-        )
-
-        // no matter how many times a card is drawn, the deck will return CrosswordCompetition because get out of jail
-        // free (the only other card "in" the deck) is actually in the player's inventory, so it is always skipped
-        (1 .. 5).forEach { i ->
-            board.drawChanceCard(player)
-            assertTrue(player.hasGetOutOfJailFreeCard)
-            assertEquals(i * 100, player.money)
-        }
-    }
-
-    @Test
-    fun `draw chance card test`() {
-        val player = Player("Elmo")
-        val bank = Bank()
-        val board = Board(
-            listOf(player),
-            bank = bank,
-            chance = Deck(listOf(ChanceCard.GetOutOfJailFree))
-        )
-
-        // get out of jail free was awarded to the player
-        board.drawChanceCard(player)
-        assertTrue(player.hasGetOutOfJailFreeCard)
     }
 }

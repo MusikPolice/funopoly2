@@ -22,7 +22,7 @@ class Bank (
     fun pay(player: Player, amount: Int, reason: String = "") {
         if (amount < 0) throw IllegalArgumentException("Amount to pay must be greater than $0")
 
-        println("${player.name} receives \$$amount $reason")
+        println("\t\t${player.name} receives \$$amount $reason")
         money -= amount
         player.money += amount
     }
