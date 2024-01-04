@@ -1,6 +1,8 @@
 package ca.jonathanfritz.monopoly.deed
 
+import ca.jonathanfritz.monopoly.FakeDice
 import ca.jonathanfritz.monopoly.Player
+import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.board.Dice
 import ca.jonathanfritz.monopoly.deed.Utility.*
 import org.junit.jupiter.api.Assertions.*
@@ -44,8 +46,8 @@ internal class UtilityTest {
                 WaterWorks() to Player.Development(isMortgaged = true)
             )
         )
-        assertEquals(0, WaterWorks().calculateRent(owner, Dice.Roll(2, 2)))
-        assertEquals(0, ElectricCompany().calculateRent(owner, Dice.Roll(2, 2)))
+        assertEquals(0, WaterWorks().calculateRent(owner, Board(listOf(owner))))
+        assertEquals(0, ElectricCompany().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -54,7 +56,14 @@ internal class UtilityTest {
             "Big Bird",
             deeds = mutableMapOf(ElectricCompany() to Player.Development())
         )
-        assertEquals(16, ElectricCompany().calculateRent(owner, Dice.Roll(2, 2)))
+        val fakeDice = FakeDice(Dice.Roll(3, 1))
+        val board = Board(listOf(owner), dice = fakeDice)
+
+        // player rolled a four
+        fakeDice.roll()
+
+        // so the rent is 4 x $4 == $16
+        assertEquals(16, ElectricCompany().calculateRent(owner, board))
     }
 
     @Test
@@ -66,7 +75,15 @@ internal class UtilityTest {
                 WaterWorks() to Player.Development()
             )
         )
-        assertEquals(40, WaterWorks().calculateRent(owner, Dice.Roll(2, 2)))
-        assertEquals(40, ElectricCompany().calculateRent(owner, Dice.Roll(2, 2)))
+
+        val fakeDice = FakeDice(Dice.Roll(3, 1))
+        val board = Board(listOf(owner), dice = fakeDice)
+
+        // player rolled a four
+        fakeDice.roll()
+
+        // so the rent is 10 x $4 == $40
+        assertEquals(40, WaterWorks().calculateRent(owner, board))
+        assertEquals(40, ElectricCompany().calculateRent(owner, board))
     }
 }

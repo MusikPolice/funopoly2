@@ -30,8 +30,7 @@ class Monopoly(
 
     fun executeGame() {
         (1 .. config.maxRounds).forEach { round ->
-            println("\nRound $round:")
-            board.executeRound()
+            board.executeRound(round)
 
             // TODO: capture some kind of game state after each round
             //  could be used for testing, debugging, post-game analysis, or eventually for animating individual games

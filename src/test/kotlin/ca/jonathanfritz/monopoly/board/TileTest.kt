@@ -17,7 +17,7 @@ internal class TileTest {
         val bank = Bank(money = 0)
         val incomeTax = Tile.IncomeTax
 
-        incomeTax.onLanding(player, bank, Board(listOf(player)), Dice.Roll(1, 1))
+        incomeTax.onLanding(player, bank, Board(listOf(player)))
 
         assertEquals(90, player.money)
         assertEquals(10, bank.money)
@@ -29,7 +29,7 @@ internal class TileTest {
         val bank = Bank(money = 0)
         val luxuryTax = Tile.LuxuryTax
 
-        luxuryTax.onLanding(player, bank, Board(listOf(player)), Dice.Roll(1, 1))
+        luxuryTax.onLanding(player, bank, Board(listOf(player)))
 
         assertEquals(100, player.money)
         assertEquals(100, bank.money)
@@ -41,7 +41,7 @@ internal class TileTest {
         val bank = Bank()
         val board = Board(listOf(player))
 
-        Tile.GoToJail.onLanding(player, bank, board, Dice.Roll(1, 1))
+        Tile.GoToJail.onLanding(player, bank, board)
         assertTrue(player.isInJail)
     }
 
@@ -52,7 +52,7 @@ internal class TileTest {
         val board = Board(listOf(player), communityChest = Deck(mutableListOf(CommunityChestCard.Inheritance)))
 
         // player draws the only available community chest card and is paid a $100 inheritance
-        Tile.CommunityChest(1).onLanding(player, bank, board, Dice.Roll(1, 1))
+        Tile.CommunityChest(1).onLanding(player, bank, board)
         assertEquals(100, player.money)
         assertEquals(0, bank.money)
     }
@@ -64,7 +64,7 @@ internal class TileTest {
         val board = Board(listOf(player), chance = Deck(mutableListOf(ChanceCard.PoorTax)))
 
         // player draws the only available chance card and pays a $15 poor tax
-        Tile.Chance(1).onLanding(player, bank, board, Dice.Roll(1, 1))
+        Tile.Chance(1).onLanding(player, bank, board)
         assertEquals(0, player.money)
         assertEquals(15, bank.money)
     }
@@ -83,7 +83,7 @@ internal class TileTest {
 
         // this test doesn't really stop a player from paying rent to themselves, but it does ensure that they don't
         // pay rent to some other player or to the bank
-        Tile.PropertyBuyable(Property.BalticAvenue::class).onLanding(player, bank, board, Dice.Roll(1, 1))
+        Tile.PropertyBuyable(Property.BalticAvenue::class).onLanding(player, bank, board)
         assertEquals(10, player.money)
     }
 
@@ -99,7 +99,7 @@ internal class TileTest {
         val bank = Bank()
         val board = Board(listOf(owner, player))
 
-        Tile.PropertyBuyable(Property.BalticAvenue::class).onLanding(player, bank, board, Dice.Roll(1, 1))
+        Tile.PropertyBuyable(Property.BalticAvenue::class).onLanding(player, bank, board)
         assertEquals(6, player.money)
         assertEquals(4, owner.money)
     }
@@ -110,7 +110,7 @@ internal class TileTest {
         val bank = Bank(money = 0)
         val board = Board(listOf(player))
 
-        Tile.PropertyBuyable(Property.BalticAvenue::class).onLanding(player, bank, board, Dice.Roll(1, 1))
+        Tile.PropertyBuyable(Property.BalticAvenue::class).onLanding(player, bank, board)
         assertEquals(40, player.money)
         assertEquals(60, bank.money)
     }

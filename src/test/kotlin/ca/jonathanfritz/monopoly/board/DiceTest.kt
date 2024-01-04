@@ -13,6 +13,7 @@ internal class DiceTest {
     fun rollTest() {
         val dice = Dice()
         val roll = dice.roll()
+        assertEquals(roll, dice.previous)
 
         // two values between 1 and 6 inclusive were returned
         assertTrue(roll.die1 >= 1)

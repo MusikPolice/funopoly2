@@ -1,7 +1,7 @@
 package ca.jonathanfritz.monopoly.deed
 
 import ca.jonathanfritz.monopoly.Player
-import ca.jonathanfritz.monopoly.board.Dice
+import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.deed.ColourGroup.*
 import kotlin.reflect.KClass
 
@@ -12,12 +12,12 @@ sealed class Property(
     val buildingCost: Int,
 
     // once built, houses and hotels charge rent over and above the base rent for the property
-    val rentNoHouse: Int,
-    val rentOneHouse: Int,
-    val rentTwoHouse: Int,
-    val rentThreeHouse: Int,
-    val rentFourHouse: Int,
-    val rentHotel: Int
+    private val rentNoHouse: Int,
+    rentOneHouse: Int,
+    rentTwoHouse: Int,
+    rentThreeHouse: Int,
+    rentFourHouse: Int,
+    private val rentHotel: Int
 ) : TitleDeed(colourGroup, price, mortgageValue) {
 
     // https://monopoly.fandom.com/wiki/List_of_Monopoly_Properties
@@ -58,7 +58,7 @@ sealed class Property(
 
     private val houseRents = listOf(rentNoHouse, rentOneHouse, rentTwoHouse, rentThreeHouse, rentFourHouse)
 
-    override fun calculateRent(owner: Player, diceRoll: Dice.Roll): Int {
+    override fun calculateRent(owner: Player, board: Board): Int {
         val development = owner.getDevelopment(this::class)
         return if (development.isMortgaged) {
             0

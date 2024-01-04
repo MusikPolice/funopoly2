@@ -6,11 +6,19 @@ import kotlin.random.Random
 open class Dice (
     private val rng: Random = Random.Default
 ) {
+    // Electric Company's rent is dependent on the value of the previous dice roll, so we'll cache it for use in that
+    // calculation to avoid having to pass Roll to every function in Board
+    internal lateinit var previous: Roll
 
-    open fun roll() = Roll(
-        rng.nextInt(1, 6),
-        rng.nextInt(1, 6),
-    )
+    open fun roll(): Roll {
+        previous = Roll(
+            rng.nextInt(1, 6),
+            rng.nextInt(1, 6),
+        )
+        return previous
+    }
+
+    fun previousRoll() = previous
 
     data class Roll (
         val die1: Int,

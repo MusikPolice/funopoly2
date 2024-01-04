@@ -19,11 +19,7 @@ sealed class ChanceCard : Card() {
     ) : ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} drew Advance to ${propertyClass.simpleName}")
-            val (_, passedGo) = board.advancePlayerToProperty(player, propertyClass)
-            if (passedGo) {
-                bank.pay(player, 200, "for passing go")
-            }
-            // TODO: player should have to buy or pay rent on the property that they landed on :/
+            board.advancePlayerToProperty(player, propertyClass)
         }
     }
 
@@ -33,11 +29,7 @@ sealed class ChanceCard : Card() {
     ) : ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} drew Advance to ${railroadClass.simpleName}")
-            val (_, passedGo) = board.advancePlayerToRailroad(player, railroadClass)
-            if (passedGo) {
-                bank.pay(player, 200, "for passing go")
-            }
-            // TODO: player should have to buy or pay rent on the railroad that they landed on :/
+            board.advancePlayerToRailroad(player, railroadClass)
         }
     }
 
@@ -48,7 +40,6 @@ sealed class ChanceCard : Card() {
             println("\t\t${player.name} drew Advance to Nearest Utility")
             // TODO: how to temporarily modify rent amount?
             board.advancePlayerToTile(player, Tile.UtilityBuyable::class)
-            // TODO: player should have to buy or pay rent on the railroad that they landed on :/
         }
     }
 
@@ -59,7 +50,6 @@ sealed class ChanceCard : Card() {
             println("\t\t${player.name} drew Advance to Nearest Railroad")
             // TODO: how to temporarily modify rent amount?
             board.advancePlayerToTile(player, Tile.RailroadBuyable::class)
-            // TODO: player should have to buy or pay rent on the railroad that they landed on :/
         }
     }
 
@@ -82,7 +72,7 @@ sealed class ChanceCard : Card() {
     object GoBackThreeSpaces: ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} drew Go Back Three Spaces")
-            board.advancePlayerBy(player, -3)
+            board.goBackThreeSpaces(player)
         }
     }
 

@@ -1,6 +1,7 @@
 package ca.jonathanfritz.monopoly.deed
 
 import ca.jonathanfritz.monopoly.Player
+import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.board.Dice
 import ca.jonathanfritz.monopoly.deed.Property.*
 import org.junit.jupiter.api.Assertions.*
@@ -61,7 +62,7 @@ internal class PropertyTest {
             "Big Bird",
             deeds = mutableMapOf(BalticAvenue() to Player.Development(isMortgaged = true))
         )
-        assertEquals(0, BalticAvenue().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(0, BalticAvenue().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -73,7 +74,7 @@ internal class PropertyTest {
                 BalticAvenue() to Player.Development(hasHotel = true)
             )
         )
-        assertEquals(450, BalticAvenue().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(450, BalticAvenue().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -85,7 +86,7 @@ internal class PropertyTest {
                 BalticAvenue() to Player.Development(hasHotel = true)
             )
         )
-        assertEquals(160, MediterraneanAvenue().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(160, MediterraneanAvenue().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -97,7 +98,7 @@ internal class PropertyTest {
                 BalticAvenue() to Player.Development(numHouses = 3)
             )
         )
-        assertEquals(180, BalticAvenue().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(180, BalticAvenue().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -109,7 +110,7 @@ internal class PropertyTest {
                 BalticAvenue() to Player.Development(numHouses = 2)
             )
         )
-        assertEquals(60, BalticAvenue().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(60, BalticAvenue().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -121,7 +122,7 @@ internal class PropertyTest {
                 BalticAvenue() to Player.Development(numHouses = 1)
             )
         )
-        assertEquals(20, BalticAvenue().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(20, BalticAvenue().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -132,7 +133,7 @@ internal class PropertyTest {
                 MediterraneanAvenue() to Player.Development(),
             )
         )
-        assertEquals(2, MediterraneanAvenue().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(2, MediterraneanAvenue().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -144,7 +145,7 @@ internal class PropertyTest {
                 BalticAvenue() to Player.Development()
             )
         )
-        assertEquals(4, MediterraneanAvenue().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(4, MediterraneanAvenue().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -156,6 +157,6 @@ internal class PropertyTest {
                 BalticAvenue() to Player.Development(isMortgaged = true)
             )
         )
-        assertEquals(4, MediterraneanAvenue().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(4, MediterraneanAvenue().calculateRent(owner, Board(listOf(owner))))
     }
 }

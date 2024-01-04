@@ -13,46 +13,58 @@ internal class ChanceCardTest {
 
     @Test
     fun `advance to property test`() {
-        val player = Player("Big Bird")
+        val player = Player("Big Bird", 30)
         val bank = Bank()
-        val board = Board(listOf(player))
+        val board = Board(
+            listOf(player),
+
+            // this chance deck is rigged to avoid moving the player
+            chance = Deck(mutableListOf(
+                ChanceCard.PoorTax
+            ))
+        )
 
         // our player draws a Chance card
-        assertLandedOnChance(
-            board.advancePlayerToTile(player, Tile.Chance::class),
-            1
-        )
+        board.advancePlayerToTile(player, Tile.Chance::class)
+        board.assertPlayerOnChance(player, 1)
+        assertEquals(15, player.money)
 
         // the card advances the player to Illinois Ave.
         val advanceToIllinoisAve = ChanceCard.AdvanceToProperty(Property.IllinoisAvenue::class)
         advanceToIllinoisAve.onDraw(player, bank, board)
         board.assertPlayerOnProperty(player, Property.IllinoisAvenue::class)
-        assertEquals(0, player.money)
+        assertEquals(15, player.money)
 
         // our player draws another Chance card
-        assertLandedOnChance(
-            board.advancePlayerToTile(player, Tile.Chance::class),
-            4
-        )
+        board.advancePlayerToTile(player, Tile.Chance::class)
+        board.assertPlayerOnChance(player, 4)
+        assertEquals(0, player.money)
 
-        // the card advances the player to St. Charles Place, this time passing go and collecting a salary
+        // the card advances the player to St. Charles Place
         val advanceToStCharlesPlace = ChanceCard.AdvanceToProperty(Property.StCharlesPlace::class)
         advanceToStCharlesPlace.onDraw(player, bank, board)
         board.assertPlayerOnProperty(player, Property.StCharlesPlace::class)
-        assertEquals(200, player.money)
+
+        // the player collects a $200 salary and immediately spends $140 of it to buy St. Charles Place
+        assertEquals(60, player.money)
     }
 
     @Test
     fun `advance to railroad test`() {
-        val player = Player("Grover")
+        val player = Player("Grover", 15)
         val bank = Bank()
-        val board = Board(listOf(player))
+        val board = Board(
+            listOf(player),
+
+            // this deck is rigged to avoid moving the player
+            chance = Deck(mutableListOf(
+                ChanceCard.PoorTax
+            ))
+        )
 
         // our player draws a Chance card
-        assertLandedOnChance(
-            board.advancePlayerToTile(player, Tile.Chance::class),
-            1
-        )
+        board.advancePlayerToTile(player, Tile.Chance::class)
+        board.assertPlayerOnChance(player, 1)
 
         // the card advances the player to Reading Railroad, passing go on the way
         val advanceToReadingRailroad = ChanceCard.AdvanceToRailroad(Railroad.ReadingRailroad::class)
@@ -60,17 +72,19 @@ internal class ChanceCardTest {
         board.assertPlayerOnRailroad(player, Railroad.ReadingRailroad::class)
         assertEquals(200, player.money)
 
-        // but if the player is already on Mediterranean Avenue
-        assertLandedOnProperty(
-            board.advancePlayerToProperty(player, Property.MediterraneanAvenue::class),
-            Property.MediterraneanAvenue::class,
-            expectedPassedGo = true
-        )
+        // but if the player is already on Mediterranean Avenue...
+        board.advancePlayerToProperty(player, Property.MediterraneanAvenue::class)
+        board.assertPlayerOnProperty(player, Property.MediterraneanAvenue::class)
 
-        // then advancing to Reading Railroad does not pay out a salary because the player doesn't pass go
+        // ...they get a $200 salary, immediately spend $60 of it to buy Mediterranean Avenue...
+        assertEquals(340, player.money)
+
+        // ...then advancing to Reading Railroad does not pay out a salary because the player doesn't pass go
         advanceToReadingRailroad.onDraw(player, bank, board)
         board.assertPlayerOnRailroad(player, Railroad.ReadingRailroad::class)
-        assertEquals(200, player.money)
+
+        // but they do buy the railroad for $200
+        assertEquals(140, player.money)
     }
 
     // TODO: AdvanceToNearestUtility and AdvanceToNearestRailroad tests

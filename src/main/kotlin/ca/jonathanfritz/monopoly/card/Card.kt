@@ -14,7 +14,6 @@ sealed class Card {
     object AdvanceToGo : Card() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             board.advancePlayerToTile(player, Tile.Go::class)
-            bank.pay(player, 200, "for passing go")
         }
     }
 

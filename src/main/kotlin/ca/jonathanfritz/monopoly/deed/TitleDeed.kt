@@ -1,7 +1,7 @@
 package ca.jonathanfritz.monopoly.deed
 
 import ca.jonathanfritz.monopoly.Player
-import ca.jonathanfritz.monopoly.board.Dice
+import ca.jonathanfritz.monopoly.board.Board
 import kotlin.reflect.KClass
 
 sealed class TitleDeed(
@@ -21,7 +21,7 @@ sealed class TitleDeed(
     // true if a player can build houses on the corresponding Tile
     abstract val isBuildable: Boolean
 
-    abstract fun calculateRent(owner: Player, diceRoll: Dice.Roll): Int
+    abstract fun calculateRent(owner: Player, board: Board): Int
 
     // houses must be built evenly, leading to two legal cases where a house can be built:
     //  1. all properties in the group have the same number of houses; or

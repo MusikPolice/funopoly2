@@ -1,8 +1,7 @@
 package ca.jonathanfritz.monopoly
 
 import ca.jonathanfritz.monopoly.board.Bank
-import ca.jonathanfritz.monopoly.board.Dice
-import ca.jonathanfritz.monopoly.board.Tile
+import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.card.Card
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
@@ -116,7 +115,7 @@ open class Player(
     // TODO: in the future, consider the amount of money on hand, maybe liquidate to raise money to complete a monopoly, etc
     fun isBuying(deed: TitleDeed): Boolean = money > deed.price
 
-    fun developProperties(bank: Bank) {
+    fun developProperties(bank: Bank, board: Board) {
         // railroads, utilities, and properties that already have a hotel cannot be developed
         val developableDeeds = deeds.filterNot { it.value.hasHotel }
             .map { it.key }
@@ -138,7 +137,7 @@ open class Player(
         }.sortedByDescending { candidateProperty ->
             // this is a bit inelegant - the idea here is to develop the property that yields the highest return on
             // investment. A reasonable proxy for this is the property's current rent
-            candidateProperty.calculateRent(this, Dice.Roll(1, 1))
+            candidateProperty.calculateRent(this, board)
         }.firstOrNull { candidateProperty ->
             // even building rules may limit the properties that can be developed at this time
             // choose the first one that we are currently allowed to build on

@@ -19,7 +19,7 @@ class Board(
     val players: List<Player>,
     private val bank: Bank = Bank(),
     private val rng: Random = Random,
-    private val dice: Dice = Dice(rng),
+    val dice: Dice = Dice(rng),
 
     // the Chance deck. See https://monopoly.fandom.com/wiki/Chance#Cards
     val chance: Deck<Card> = Deck(
@@ -112,7 +112,9 @@ class Board(
         PropertyBuyable(Boardwalk::class),
     )
 
-    fun executeRound() {
+    fun executeRound(round: Int) {
+        println("\nRound $round:")
+
         // in each round, every player gets between one and three turns on which to affect the game state
         players.forEach { player ->
             println("\n\tStarting ${player.name}'s turn ${if (player.isInJail) "In" else "on"} ${player.tileName()} with \$${player.money}")
@@ -155,15 +157,13 @@ class Board(
 
                 // if the player is not in jail, they advance around the board
                 if (!player.isInJail) {
-                    val (tile, passedGo) = advancePlayerBy(player, diceRoll.amount)
-                    if (passedGo) {
-                        bank.pay(player, 200, "for passing go")
-                    }
-                    tile.onLanding(player, bank, this, diceRoll)
+                    advancePlayerBy(player, diceRoll.amount)
                 }
 
+                // after rolling the dice, players can opt to develop their monopolies
+                player.developProperties(bank, this)
+
                 // TODO: trading, mortgaging, etc
-                player.developProperties(bank)
 
             } while (diceRoll.isDoubles && doublesCount < 3)
         }
@@ -203,24 +203,31 @@ class Board(
 
     // advances the player by the specified number of tiles
     // returns the tile that the player landed on, and a boolean indicating whether they passed go
-    fun advancePlayerBy(player: Player, positions: Int): Pair<Tile, Boolean> {
+    private fun advancePlayerBy(player: Player, offset: Int) {
+        // figure out where the player landed
         val oldPosition = player.position
-        player.position = player.positionOffset(positions)
+        player.position = player.positionOffset(offset)
         val newTile = tiles[player.position]
 
         // a turn action (dice roll, card effect, etc) can advance the player at most tiles.size positions
         // importantly, players are only rewarded for passing go in a clockwise direction (i.e. because of a dice roll)
         // so if direction is positive and position is less than old position, the player either landed on or passed go
-        val passedGo = positions > 0 && player.position < oldPosition
-        return newTile to passedGo
+        val passedGo = offset > 0 && player.position < oldPosition
+        if (passedGo) {
+            bank.pay(player, 200, "for passing go")
+        }
+
+        // process the events triggered by the player having landed on the new tile
+        newTile.onLanding(player, bank, this)
     }
 
     // advances the player to the next instance of the indicated tile type
     // returns the tile that the player landed on, and a boolean indicating whether they passed go
-    fun advancePlayerToTile(player: Player, tileClass: KClass<out Tile>): Pair<Tile, Boolean> {
+    fun advancePlayerToTile(player: Player, tileClass: KClass<out Tile>) {
         (1 until tiles.size).forEach { offset ->
             if (tiles[player.positionOffset(offset)]::class == tileClass) {
-                return advancePlayerBy(player, offset)
+                advancePlayerBy(player, offset)
+                return
             }
         }
         throw IllegalArgumentException("Failed to find next ${tileClass.simpleName} after position ${player.position} (${tiles[player.position]::class})")
@@ -228,11 +235,12 @@ class Board(
 
     // advances the player to the specified property
     // returns the tile that the player landed on, and a boolean indicating whether they passed go
-    fun advancePlayerToProperty(player: Player, propertyClass: KClass<out Property>): Pair<Tile, Boolean> {
+    fun advancePlayerToProperty(player: Player, propertyClass: KClass<out Property>) {
         (1 until tiles.size).forEach { offset ->
             val tile = tiles[player.positionOffset(offset)]
             if (tile is PropertyBuyable && tile.deedClass == propertyClass) {
-                return advancePlayerBy(player, offset)
+                advancePlayerBy(player, offset)
+                return
             }
         }
         throw IllegalArgumentException("Failed to find ${propertyClass.simpleName} after position ${player.position} (${tiles[player.position]::class})")
@@ -240,14 +248,19 @@ class Board(
 
     // advances the player to the specified railroad
     // returns the tile that the player landed on, and a boolean indicating whether they passed go
-    fun advancePlayerToRailroad(player: Player, railroadClass: KClass<out Railroad>): Pair<Tile, Boolean> {
+    fun advancePlayerToRailroad(player: Player, railroadClass: KClass<out Railroad>) {
         (1 until tiles.size).forEach { offset ->
             val tile = tiles[player.positionOffset(offset)]
             if (tile is RailroadBuyable && tile.deedClass == railroadClass) {
-                return advancePlayerBy(player, offset)
+                advancePlayerBy(player, offset)
+                return
             }
         }
         throw IllegalArgumentException("Failed to find ${railroadClass.simpleName} after position ${player.position} (${tiles[player.position]::class})")
+    }
+
+    fun goBackThreeSpaces(player: Player) {
+        advancePlayerBy(player, -3,)
     }
 
     private fun Player.positionOffset(offset: Int) =

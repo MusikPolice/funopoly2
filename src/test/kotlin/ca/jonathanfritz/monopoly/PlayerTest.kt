@@ -1,6 +1,7 @@
 package ca.jonathanfritz.monopoly
 
 import ca.jonathanfritz.monopoly.board.Bank
+import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.card.ChanceCard
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
@@ -286,66 +287,67 @@ internal class PlayerTest {
     fun `developProperties upgrades a monopoly as expected`() {
         val player = Player("Elmo", 2751)
         val bank = Bank()
+        val board = Board(listOf(player), bank)
 
         bank.sellPropertyToPlayer(ParkPlace::class, player)
         bank.sellPropertyToPlayer(Boardwalk::class, player)
         assertTrue(player.hasMonopoly(ColourGroup.DarkBlue))
 
         // first house is built on Boardwalk because it has the higher rent
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(0, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(1, player.getDevelopment(Boardwalk::class).numHouses)
 
         // next house is built on Park Place to respect even building rules
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(1, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(1, player.getDevelopment(Boardwalk::class).numHouses)
 
         // back to Boardwalk
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(1, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(2, player.getDevelopment(Boardwalk::class).numHouses)
 
         // then Park Place
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(2, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(2, player.getDevelopment(Boardwalk::class).numHouses)
 
         // Boardwalk again
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(2, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(3, player.getDevelopment(Boardwalk::class).numHouses)
 
         // Another for Park Place
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(3, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(3, player.getDevelopment(Boardwalk::class).numHouses)
 
         // last house for Boardwalk
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(3, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(4, player.getDevelopment(Boardwalk::class).numHouses)
 
         // and a final house for Park Place
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(4, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(4, player.getDevelopment(Boardwalk::class).numHouses)
 
         // Boardwalk gets a hotel
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(4, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(0, player.getDevelopment(Boardwalk::class).numHouses)
         assertTrue(player.getDevelopment(Boardwalk::class).hasHotel)
 
         // as does Park Place
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(0, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(0, player.getDevelopment(Boardwalk::class).numHouses)
         assertTrue(player.getDevelopment(ParkPlace::class).hasHotel)
         assertTrue(player.getDevelopment(Boardwalk::class).hasHotel)
 
         // both properties are fully upgraded, so nothing changes if we call again
-        player.developProperties(bank)
+        player.developProperties(bank, board)
         assertEquals(0, player.getDevelopment(ParkPlace::class).numHouses)
         assertEquals(0, player.getDevelopment(Boardwalk::class).numHouses)
         assertTrue(player.getDevelopment(ParkPlace::class).hasHotel)

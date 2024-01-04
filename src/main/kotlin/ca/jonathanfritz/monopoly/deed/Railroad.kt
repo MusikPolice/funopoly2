@@ -1,7 +1,7 @@
 package ca.jonathanfritz.monopoly.deed
 
 import ca.jonathanfritz.monopoly.Player
-import ca.jonathanfritz.monopoly.board.Dice
+import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
 import kotlin.reflect.KClass
 
@@ -22,7 +22,7 @@ sealed class Railroad(): TitleDeed(ColourGroup.Railroads, 200, 100) {
     }
 
     // rent is based on number of railroads owned - $25 if one, $50 if 2, $100 if three, $200 if four
-    override fun calculateRent(owner: Player, diceRoll: Dice.Roll): Int {
+    override fun calculateRent(owner: Player, board: Board): Int {
         if (owner.getDevelopment(this::class).isMortgaged) return 0
 
         return when(owner.deeds.keys.count { it is Railroad }) {

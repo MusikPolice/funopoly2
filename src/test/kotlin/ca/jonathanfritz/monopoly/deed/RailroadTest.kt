@@ -1,6 +1,7 @@
 package ca.jonathanfritz.monopoly.deed
 
 import ca.jonathanfritz.monopoly.Player
+import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.board.Dice
 import ca.jonathanfritz.monopoly.deed.Railroad.*
 import org.junit.jupiter.api.Assertions.*
@@ -43,7 +44,7 @@ internal class RailroadTest {
             "Big Bird",
             deeds = mutableMapOf(ReadingRailroad() to Player.Development(isMortgaged = true))
         )
-        assertEquals(0, ReadingRailroad().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(0, ReadingRailroad().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -52,7 +53,7 @@ internal class RailroadTest {
             "Big Bird",
             deeds = mutableMapOf(ReadingRailroad() to Player.Development())
         )
-        assertEquals(25, ReadingRailroad().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(25, ReadingRailroad().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -64,8 +65,8 @@ internal class RailroadTest {
                 PennsylvaniaRailroad() to Player.Development()
             )
         )
-        assertEquals(50, ReadingRailroad().calculateRent(owner, Dice.Roll(1, 1)))
-        assertEquals(50, PennsylvaniaRailroad().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(50, ReadingRailroad().calculateRent(owner, Board(listOf(owner))))
+        assertEquals(50, PennsylvaniaRailroad().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -78,9 +79,9 @@ internal class RailroadTest {
                 BAndORailroad() to Player.Development()
             )
         )
-        assertEquals(100, ReadingRailroad().calculateRent(owner, Dice.Roll(1, 1)))
-        assertEquals(100, PennsylvaniaRailroad().calculateRent(owner, Dice.Roll(1, 1)))
-        assertEquals(100, BAndORailroad().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(100, ReadingRailroad().calculateRent(owner, Board(listOf(owner))))
+        assertEquals(100, PennsylvaniaRailroad().calculateRent(owner, Board(listOf(owner))))
+        assertEquals(100, BAndORailroad().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
@@ -94,9 +95,9 @@ internal class RailroadTest {
                 ShortlineRailroad() to Player.Development()
             )
         )
-        assertEquals(200, ReadingRailroad().calculateRent(owner, Dice.Roll(1, 1)))
-        assertEquals(200, PennsylvaniaRailroad().calculateRent(owner, Dice.Roll(1, 1)))
-        assertEquals(200, BAndORailroad().calculateRent(owner, Dice.Roll(1, 1)))
-        assertEquals(200, ShortlineRailroad().calculateRent(owner, Dice.Roll(1, 1)))
+        assertEquals(200, ReadingRailroad().calculateRent(owner, Board(listOf(owner))))
+        assertEquals(200, PennsylvaniaRailroad().calculateRent(owner, Board(listOf(owner))))
+        assertEquals(200, BAndORailroad().calculateRent(owner, Board(listOf(owner))))
+        assertEquals(200, ShortlineRailroad().calculateRent(owner, Board(listOf(owner))))
     }
 }
