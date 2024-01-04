@@ -38,11 +38,12 @@ internal class TileTest {
     @Test
     fun `go to jail tile puts player in jail upon landing`() {
         val player = Player("Ernie")
-        val bank = Bank()
         val board = Board(listOf(player))
 
-        Tile.GoToJail.onLanding(player, bank, board)
+        // player lands on Go To Jail, does not receive their salary for passing Go
+        board.advancePlayerToTile(player, Tile.GoToJail::class)
         assertTrue(player.isInJail)
+        assertEquals(0, player.money)
     }
 
     @Test

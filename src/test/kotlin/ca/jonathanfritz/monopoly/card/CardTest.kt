@@ -6,6 +6,7 @@ import ca.jonathanfritz.monopoly.assertPlayerOnChance
 import ca.jonathanfritz.monopoly.board.Bank
 import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.board.Tile
+import ca.jonathanfritz.monopoly.deed.Railroad
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -37,17 +38,22 @@ internal class CardTest {
     @Test
     fun `go to jail test`() {
         val player = Player("Bert")
-        val bank = Bank()
-        val board = Board(listOf(player))
-
-        Card.GoToJail.onDraw(player, bank, board)
-
-        // player went directly to jail with no salary and is not "just visiting"
-        assertTrue(player.isInJail)
-        board.assertPlayerOn(
-            player,
-            Tile.Jail::class
+        val board = Board(
+            listOf(player),
+            chance = Deck(mutableListOf(
+                Card.GoToJail
+            ))
         )
+
+        // get the player past Jail so they have to pass Go if sent there
+        board.advancePlayerToRailroad(player, Railroad.PennsylvaniaRailroad::class)
+
+        // advance the player to the next Chance tile where they will draw a Go to Jail card
+        board.advancePlayerToTile(player, Tile.Chance::class)
+
+        // player went directly to jail without collecting a salary
+        assertTrue(player.isInJail)
+        board.assertPlayerOn(player, Tile.Jail::class)
         assertEquals(0, player.money)
     }
 }

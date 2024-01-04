@@ -13,6 +13,7 @@ sealed class Card {
     // Advance to "Go". (Collect $200)
     object AdvanceToGo : Card() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
+            println("\t\t${player.name} drew Advance to Go")
             board.advancePlayerToTile(player, Tile.Go::class)
         }
     }
@@ -20,6 +21,7 @@ sealed class Card {
     // Go to Jail. Go directly to Jail. Do not pass GO, do not collect $200.
     object GoToJail: Card() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
+            println("\t\t${player.name} drew Go to Jail")
             board.goToJail(player)
         }
     }

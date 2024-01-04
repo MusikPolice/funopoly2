@@ -80,8 +80,11 @@ sealed class Tile {
 
     object Jail : Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
-            // the player is just visiting, so this is a no-op
-            println("\t\t${player.name} landed on Jail")
+            if (player.isInJail) {
+                println("\t\t${player.name} is In Jail")
+            } else {
+                println("\t\t${player.name} is Just Visiting the Jail")
+            }
         }
     }
 
@@ -95,8 +98,6 @@ sealed class Tile {
     object GoToJail : Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} landed on GoToJail")
-
-            // TODO: player is collecting salary :/
             board.goToJail(player)
         }
     }

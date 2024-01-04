@@ -157,7 +157,7 @@ class Board(
 
                 // if the player is not in jail, they advance around the board
                 if (!player.isInJail) {
-                    advancePlayerBy(player, diceRoll.amount)
+                    advancePlayerBy(player, diceRoll.amount, true)
                 }
 
                 // after rolling the dice, players can opt to develop their monopolies
@@ -186,8 +186,8 @@ class Board(
     }
 
     fun goToJail(player: Player) {
-        advancePlayerToTile(player, Jail::class)
         player.isInJail = true
+        advancePlayerToTile(player, Jail::class)
     }
 
     fun playerTile(player: Player) = tiles[player.position]
@@ -203,7 +203,7 @@ class Board(
 
     // advances the player by the specified number of tiles
     // returns the tile that the player landed on, and a boolean indicating whether they passed go
-    private fun advancePlayerBy(player: Player, offset: Int) {
+    private fun advancePlayerBy(player: Player, offset: Int, collectSalary: Boolean) {
         // figure out where the player landed
         val oldPosition = player.position
         player.position = player.positionOffset(offset)
@@ -213,7 +213,7 @@ class Board(
         // importantly, players are only rewarded for passing go in a clockwise direction (i.e. because of a dice roll)
         // so if direction is positive and position is less than old position, the player either landed on or passed go
         val passedGo = offset > 0 && player.position < oldPosition
-        if (passedGo) {
+        if (passedGo && collectSalary) {
             bank.pay(player, 200, "for passing go")
         }
 
@@ -226,7 +226,7 @@ class Board(
     fun advancePlayerToTile(player: Player, tileClass: KClass<out Tile>) {
         (1 until tiles.size).forEach { offset ->
             if (tiles[player.positionOffset(offset)]::class == tileClass) {
-                advancePlayerBy(player, offset)
+                advancePlayerBy(player, offset, tileClass != Jail::class)
                 return
             }
         }
@@ -239,7 +239,7 @@ class Board(
         (1 until tiles.size).forEach { offset ->
             val tile = tiles[player.positionOffset(offset)]
             if (tile is PropertyBuyable && tile.deedClass == propertyClass) {
-                advancePlayerBy(player, offset)
+                advancePlayerBy(player, offset, true)
                 return
             }
         }
@@ -252,7 +252,7 @@ class Board(
         (1 until tiles.size).forEach { offset ->
             val tile = tiles[player.positionOffset(offset)]
             if (tile is RailroadBuyable && tile.deedClass == railroadClass) {
-                advancePlayerBy(player, offset)
+                advancePlayerBy(player, offset, true)
                 return
             }
         }
@@ -260,7 +260,7 @@ class Board(
     }
 
     fun goBackThreeSpaces(player: Player) {
-        advancePlayerBy(player, -3,)
+        advancePlayerBy(player, -3, true,)
     }
 
     private fun Player.positionOffset(offset: Int) =
