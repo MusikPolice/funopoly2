@@ -60,27 +60,12 @@ class Bank (
         if (!player.hasMonopoly(deed.colourGroup))
             throw MonopolyOwnershipException("${player.name} does not have monopoly on ${deed.colourGroup}")
 
-        // houses must be built evenly, leading to two legal cases where a house can be built:
-        //  1. all properties in the group have the same number of houses; or
-        //  2. the target property has one fewer house than one or both of the other properties in the group, and an
-        //      equal number of houses to any remaining properties in the group
-        val houseCounts = player.deeds.filter { deedDevelopment -> deedDevelopment.key.colourGroup == deed.colourGroup }
-            .map { deedDevelopment -> deedDevelopment.key::class to deedDevelopment.value.numHouses }
-            .groupBy { deedHouseCount -> deedHouseCount.second }
-            .map { it.key to it.value.map { deedHouseCount -> deedHouseCount.first } }
-            .toMap()
-        val allDeedsHaveSameHouseCount = houseCounts.keys.size == 1
-        val twoHouseCountGroups = houseCounts.keys.size == 2
-        val minHouses = houseCounts.keys.min()
-        val maxHouses = houseCounts.keys.max()
-        val minHousesIsOneLessThanMaxHouses = minHouses == maxHouses - 1
-        val targetDeedHasMinHouses = houseCounts[minHouses]?.contains(deed::class) == true
-        if (!allDeedsHaveSameHouseCount && !(twoHouseCountGroups && minHousesIsOneLessThanMaxHouses && targetDeedHasMinHouses)) {
-            throw PropertyDevelopmentException("House placement on ${propertyClass.simpleName} is illegal")
-        }
+        if (!deed.addingHouseRespectsEvenBuildingRules(player))
+            throw PropertyDevelopmentException("House placement on ${deed::class.simpleName} is illegal")
 
         // a maximum of four houses can be built on a property
-        if (player.deeds[deed]?.numHouses == 4)
+        val development = player.getDevelopment(propertyClass)
+        if (development.numHouses == 4)
             throw PropertyDevelopmentException("${player.name} can build at most 4 houses on ${propertyClass.simpleName}")
 
         // the bank has a limited number of houses to sell
@@ -103,15 +88,17 @@ class Bank (
             ?: throw PropertyOwnershipException("${player.name} does not own ${propertyClass.simpleName}")
 
         // and have a monopoly on that property's colour group
-        if (!player.hasMonopoly(deed.colourGroup)) throw MonopolyOwnershipException("${player.name} does not have monopoly on ${deed.colourGroup}")
+        if (!player.hasMonopoly(deed.colourGroup))
+            throw MonopolyOwnershipException("${player.name} does not have monopoly on ${deed.colourGroup}")
 
         // the target property must already have four houses on it
-        if (player.deeds[deed]?.hasHotel == true) throw PropertyDevelopmentException("${player.name} has already built a hotel on ${propertyClass.simpleName}")
-        if (player.deeds[deed]?.numHouses != 4) throw PropertyDevelopmentException("${player.name} must build 4 houses on ${propertyClass.simpleName} before building a hotel")
+        if (player.deeds[deed]?.hasHotel == true)
+            throw PropertyDevelopmentException("${player.name} has already built a hotel on ${propertyClass.simpleName}")
+        if (player.deeds[deed]?.numHouses != 4)
+            throw PropertyDevelopmentException("${player.name} must build 4 houses on ${propertyClass.simpleName} before building a hotel")
 
-        // hotels must be built evenly, so all properties in the monopoly group must have either four houses or a hotel
-        if (!player.deeds.filter { deedDevelopment -> deedDevelopment.key.colourGroup == deed.colourGroup }
-            .all { deedDevelopment -> deedDevelopment.value.numHouses == 4 || deedDevelopment.value.hasHotel })
+        // even building rules apply
+        if (!deed.addingHotelRespectsEvenBuildingRules(player))
             throw PropertyDevelopmentException("Properties in ${deed.colourGroup} are not sufficiently developed to allow building a hotel on ${propertyClass.simpleName}")
 
         // the bank must have available hotels

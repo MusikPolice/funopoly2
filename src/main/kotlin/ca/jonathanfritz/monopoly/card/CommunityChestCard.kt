@@ -20,8 +20,8 @@ sealed class CommunityChestCard: Card() {
     object GetOutOfJailFree: GetOutOfJailFreeCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             if (board.communityChest.remove(this)) {
-                player.grantGetOutOfJailFreeCard(this)
                 println("\t\t${player.name} added a Get out of Jail Free card to their inventory")
+                player.grantGetOutOfJailFreeCard(this)
             } else {
                 throw InsufficientTokenException("Failed to grant ${player.name} Get Out of Jail Free card: Card is not present in Chance deck")
             }

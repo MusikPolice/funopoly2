@@ -18,10 +18,12 @@ sealed class ChanceCard : Card() {
         private val propertyClass: KClass<out Property>
     ) : ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
+            println("\t\t${player.name} drew Advance to ${propertyClass.simpleName}")
             val (_, passedGo) = board.advancePlayerToProperty(player, propertyClass)
             if (passedGo) {
                 bank.pay(player, 200, "for passing go")
             }
+            // TODO: player should have to buy or pay rent on the property that they landed on :/
         }
     }
 
@@ -30,10 +32,12 @@ sealed class ChanceCard : Card() {
         private val railroadClass: KClass<out Railroad>
     ) : ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
+            println("\t\t${player.name} drew Advance to ${railroadClass.simpleName}")
             val (_, passedGo) = board.advancePlayerToRailroad(player, railroadClass)
             if (passedGo) {
                 bank.pay(player, 200, "for passing go")
             }
+            // TODO: player should have to buy or pay rent on the railroad that they landed on :/
         }
     }
 
@@ -41,8 +45,10 @@ sealed class ChanceCard : Card() {
     // If unowned, you may buy it from the Bank. If owned, throw dice and pay owner a total 10 (ten) times the amount thrown.
     object AdvanceToNearestUtility: ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
+            println("\t\t${player.name} drew Advance to Nearest Utility")
             // TODO: how to temporarily modify rent amount?
             board.advancePlayerToTile(player, Tile.UtilityBuyable::class)
+            // TODO: player should have to buy or pay rent on the railroad that they landed on :/
         }
     }
 
@@ -50,8 +56,10 @@ sealed class ChanceCard : Card() {
     // If unowned, you may buy it from the Bank. If owned, pay owner twice the rental to which they are otherwise entitled.
     object AdvanceToNearestRailroad: ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
+            println("\t\t${player.name} drew Advance to Nearest Railroad")
             // TODO: how to temporarily modify rent amount?
             board.advancePlayerToTile(player, Tile.RailroadBuyable::class)
+            // TODO: player should have to buy or pay rent on the railroad that they landed on :/
         }
     }
 
@@ -62,8 +70,8 @@ sealed class ChanceCard : Card() {
     object GetOutOfJailFree: GetOutOfJailFreeCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             if (board.chance.remove(this)) {
-                player.grantGetOutOfJailFreeCard(this)
                 println("\t\t${player.name} added a Get out of Jail Free card to their inventory")
+                player.grantGetOutOfJailFreeCard(this)
             } else {
                 throw InsufficientTokenException("Failed to grant ${player.name} Get Out of Jail Free card: Card is not present in Chance deck")
             }
@@ -73,6 +81,7 @@ sealed class ChanceCard : Card() {
     // Go back three spaces
     object GoBackThreeSpaces: ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
+            println("\t\t${player.name} drew Go Back Three Spaces")
             board.advancePlayerBy(player, -3)
         }
     }

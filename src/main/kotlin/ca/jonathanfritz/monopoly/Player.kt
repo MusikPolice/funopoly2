@@ -1,5 +1,8 @@
 package ca.jonathanfritz.monopoly
 
+import ca.jonathanfritz.monopoly.board.Bank
+import ca.jonathanfritz.monopoly.board.Dice
+import ca.jonathanfritz.monopoly.board.Tile
 import ca.jonathanfritz.monopoly.card.Card
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
@@ -91,6 +94,7 @@ open class Player(
 
     // returns true if the player intends to pay a fine to get out of jail on this turn
     // TODO: there are some cases in which the player should stay in jail rather than paying the fine
+    //  consider only paying if money > highest rent on the board > $50
     open fun isPayingGetOutOfJailEarlyFee(amount: Int) = isInJail && getOutOfJailFreeCards.isEmpty() && remainingTurnsInJail > 0 && money > amount
 
     // returns a Pair<num houses, num hotels> that includes developments on all owned properties
@@ -112,8 +116,45 @@ open class Player(
     // TODO: in the future, consider the amount of money on hand, maybe liquidate to raise money to complete a monopoly, etc
     fun isBuying(deed: TitleDeed): Boolean = money > deed.price
 
-    // TODO: rent calculation and logic dictating whether a house or hotel can be purchased will live inside of this Development object
-    //  figure out how to generalize it for all types of TitleDeed, possibly with a when over sealed class type
+    fun developProperties(bank: Bank) {
+        // railroads, utilities, and properties that already have a hotel cannot be developed
+        val developableDeeds = deeds.filterNot { it.value.hasHotel }
+            .map { it.key }
+            .filterIsInstance<Property>()
+
+        // attempt to determine which of the developable deeds we should build on
+        developableDeeds.map { titleDeed ->
+            titleDeed.colourGroup
+        }.distinct().filter { ownedColourGroup ->
+            // can only build if we have a monopoly on the colour group
+            hasMonopoly(ownedColourGroup)
+        }.flatMap { colourGroup ->
+            // convert the colour group back into its constituent properties, limiting to properties we can afford to develop
+            developableDeeds.filter { titleDeed ->
+                // TODO: this is pretty aggressive - On round 27, Elmo spends all but $44 to build a house
+                //  consider holding at least highest rent on the board in escrow
+                titleDeed.colourGroup == colourGroup && titleDeed.buildingCost < money
+            }
+        }.sortedByDescending { candidateProperty ->
+            // this is a bit inelegant - the idea here is to develop the property that yields the highest return on
+            // investment. A reasonable proxy for this is the property's current rent
+            candidateProperty.calculateRent(this, Dice.Roll(1, 1))
+        }.firstOrNull { candidateProperty ->
+            // even building rules may limit the properties that can be developed at this time
+            // choose the first one that we are currently allowed to build on
+            when (getDevelopment(candidateProperty::class).numHouses) {
+                4 -> candidateProperty.addingHotelRespectsEvenBuildingRules(this)
+                else -> candidateProperty.addingHouseRespectsEvenBuildingRules(this)
+            }
+        }?.let { property ->
+            // if we found a property that can be developed, build a house or hotel on it as appropriate
+            when(getDevelopment(property::class).numHouses) {
+                4 -> bank.buildHotel(property::class, this)
+                else -> bank.buildHouse(property::class, this)
+            }
+        }
+    }
+
     data class Development(
         var numHouses: Int = 0,
         var hasHotel: Boolean = false,

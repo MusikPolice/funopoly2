@@ -57,6 +57,9 @@ sealed class Tile {
 
     class CommunityChest(val side: Int): Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board, diceRoll: Dice.Roll) {
+            // TODO: Round 15:
+            //  Elmo lands on Community Chest on his second dice roll - no card message is logged
+            //  this also happens to Ernie on his first dice roll
             println("\t\t${player.name} landed on CommunityChest (side $side)")
             board.communityChest.draw().onDraw(player, bank, board)
         }
@@ -71,6 +74,8 @@ sealed class Tile {
 
     class Chance(val side: Int): Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board, diceRoll: Dice.Roll) {
+            // TODO: Round 17:
+            //  Elmo lands on Chance on his first dice roll - no card message is logged
             println("\t\t${player.name} landed on Chance (side $side)")
             board.chance.draw().onDraw(player, bank, board)
         }

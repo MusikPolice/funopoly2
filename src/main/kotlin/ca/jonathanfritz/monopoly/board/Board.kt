@@ -119,19 +119,7 @@ class Board(
 
             // the player can get out of jail early by using a Get Out of Jail Free card or by paying a fee
             if (player.isInJail && player.remainingTurnsInJail > 0) {
-                val card = player.useGetOutOfJailFreeCard()
-                if (card != null) {
-                    // return the card to the appropriate deck and let the player out of jail
-                    when (card) {
-                        is ChanceCard.GetOutOfJailFree -> chance.add(card)
-                        is CommunityChestCard.GetOutOfJailFree -> communityChest.add(card)
-                    }
-                    player.isInJail = false
-                } else if (player.isPayingGetOutOfJailEarlyFee(config.getOutOfJailEarlyFeeAmount)) {
-                    // charge the player a fee and let them out of jail
-                    bank.charge(player, config.getOutOfJailEarlyFeeAmount, "to get out of jail early")
-                    player.isInJail = false
-                }
+                attemptToGetOutOfJail(player)
             }
 
             // each player rolls the dice
@@ -163,7 +151,7 @@ class Board(
                         bank.charge(player, config.getOutOfJailEarlyFeeAmount, "to get out ouf jail")
                     }
                 }
-                println("\t\t${player.name} rolled a ${diceRoll.amount}")
+                println("\t\t${player.name} rolled a ${diceRoll.amount} ${if (diceRoll.isDoubles) "(doubles)" else ""}")
 
                 // if the player is not in jail, they advance around the board
                 if (!player.isInJail) {
@@ -174,9 +162,26 @@ class Board(
                     tile.onLanding(player, bank, this, diceRoll)
                 }
 
-                // TODO: trading, mortgaging, developing properties, etc
+                // TODO: trading, mortgaging, etc
+                player.developProperties(bank)
 
             } while (diceRoll.isDoubles && doublesCount < 3)
+        }
+    }
+
+    private fun attemptToGetOutOfJail(player: Player) {
+        val card = player.useGetOutOfJailFreeCard()
+        if (card != null) {
+            // return the card to the appropriate deck and let the player out of jail
+            when (card) {
+                is ChanceCard.GetOutOfJailFree -> chance.add(card)
+                is CommunityChestCard.GetOutOfJailFree -> communityChest.add(card)
+            }
+            player.isInJail = false
+        } else if (player.isPayingGetOutOfJailEarlyFee(config.getOutOfJailEarlyFeeAmount)) {
+            // charge the player a fee and let them out of jail
+            bank.charge(player, config.getOutOfJailEarlyFeeAmount, "to get out of jail early")
+            player.isInJail = false
         }
     }
 

@@ -185,7 +185,10 @@ internal class BoardTest {
 
     @Test
     fun `a player who passes go is awarded $200 salary`() {
-        val player = Player("Grover")
+        val player = Player(
+            "Grover",
+            deeds = mutableMapOf(Property.BalticAvenue() to Player.Development())
+        )
         val fakeDice = FakeDice(Roll(5, 1))
         val bank = Bank(money = 200)
         val board = Board(listOf(player), bank = bank, dice = fakeDice)
@@ -427,5 +430,28 @@ internal class BoardTest {
             Railroad.ReadingRailroad::class,
             expectedPassedGo = true
         )
+    }
+
+    @Test
+    fun `a player that completes a monopoly can develop the cheapest property in the group`() {
+        val player = Player(
+            "Big Bird",
+            money = 151,
+            deeds = mutableMapOf(
+                Property.VermontAvenue() to Player.Development(),
+                Property.ConnecticutAvenue() to Player.Development()
+            )
+        )
+        val fakeDice = FakeDice(Roll(5, 1))
+        val board = Board(listOf(player), dice = fakeDice)
+
+        // big bird will land on Oriental Avenue, buy it, and build a house on Connecticut Avenue (it has the highest
+        // rent of the three light blue properties), having completed a monopoly on light blue
+        board.executeRound()
+        board.assertPlayerOnProperty(player, Property.OrientalAvenue::class)
+        assertEquals(0, player.getDevelopment(Property.OrientalAvenue::class).numHouses)
+        assertEquals(0, player.getDevelopment(Property.VermontAvenue::class).numHouses)
+        assertEquals(1, player.getDevelopment(Property.ConnecticutAvenue::class).numHouses)
+        assertEquals(1, player.money)
     }
 }
