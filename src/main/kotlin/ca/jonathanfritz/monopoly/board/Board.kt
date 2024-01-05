@@ -203,7 +203,12 @@ class Board(
 
     // advances the player by the specified number of tiles
     // returns the tile that the player landed on, and a boolean indicating whether they passed go
-    private fun advancePlayerBy(player: Player, offset: Int, collectSalary: Boolean) {
+    private fun advancePlayerBy(
+        player: Player,
+        offset: Int,
+        collectSalary: Boolean = true,
+        rentOverride: ((Player, Bank, Board) -> Int)? = null
+    ) {
         // figure out where the player landed
         val oldPosition = player.position
         player.position = player.positionOffset(offset)
@@ -218,15 +223,15 @@ class Board(
         }
 
         // process the events triggered by the player having landed on the new tile
-        newTile.onLanding(player, bank, this)
+        newTile.onLanding(player, bank, this, rentOverride)
     }
 
     // advances the player to the next instance of the indicated tile type
     // returns the tile that the player landed on, and a boolean indicating whether they passed go
-    fun advancePlayerToTile(player: Player, tileClass: KClass<out Tile>) {
+    fun advancePlayerToTile(player: Player, tileClass: KClass<out Tile>, rentOverride: ((Player, Bank, Board) -> Int)? = null) {
         (1 until tiles.size).forEach { offset ->
             if (tiles[player.positionOffset(offset)]::class == tileClass) {
-                advancePlayerBy(player, offset, tileClass != Jail::class)
+                advancePlayerBy(player, offset, tileClass != Jail::class, rentOverride)
                 return
             }
         }
@@ -239,7 +244,7 @@ class Board(
         (1 until tiles.size).forEach { offset ->
             val tile = tiles[player.positionOffset(offset)]
             if (tile is PropertyBuyable && tile.deedClass == propertyClass) {
-                advancePlayerBy(player, offset, true)
+                advancePlayerBy(player, offset)
                 return
             }
         }
@@ -252,7 +257,7 @@ class Board(
         (1 until tiles.size).forEach { offset ->
             val tile = tiles[player.positionOffset(offset)]
             if (tile is RailroadBuyable && tile.deedClass == railroadClass) {
-                advancePlayerBy(player, offset, true)
+                advancePlayerBy(player, offset)
                 return
             }
         }
@@ -260,7 +265,7 @@ class Board(
     }
 
     fun goBackThreeSpaces(player: Player) {
-        advancePlayerBy(player, -3, true,)
+        advancePlayerBy(player, -3)
     }
 
     private fun Player.positionOffset(offset: Int) =

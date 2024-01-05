@@ -7,6 +7,7 @@ import ca.jonathanfritz.monopoly.board.Tile
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Railroad
 import ca.jonathanfritz.monopoly.exception.InsufficientTokenException
+import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
 import kotlin.reflect.KClass
 
 sealed class ChanceCard : Card() {
@@ -38,8 +39,12 @@ sealed class ChanceCard : Card() {
     object AdvanceToNearestUtility: ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} drew Advance to Nearest Utility")
-            // TODO: how to temporarily modify rent amount?
-            board.advancePlayerToTile(player, Tile.UtilityBuyable::class)
+            board.advancePlayerToTile(player, Tile.UtilityBuyable::class) { _, _, b ->
+                val dice = b.dice.roll().amount
+                val amount = dice * 10
+                println("\t\t${player.name} rolls a $dice, and owes \$$amount ($10 x $dice) to the owner")
+                amount
+            }
         }
     }
 
@@ -48,8 +53,24 @@ sealed class ChanceCard : Card() {
     object AdvanceToNearestRailroad: ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             println("\t\t${player.name} drew Advance to Nearest Railroad")
-            // TODO: how to temporarily modify rent amount?
-            board.advancePlayerToTile(player, Tile.RailroadBuyable::class)
+            board.advancePlayerToTile(player, Tile.RailroadBuyable::class) { p, _, b ->
+                // we know that the tile the player landed on is a railroad
+                val deedClass = (b.playerTile(p) as Tile.RailroadBuyable).deedClass
+                b.players.firstOrNull { potentialOwner ->
+                    // find the owner of the tile
+                    potentialOwner.isOwner(deedClass)
+                }?.let { owner ->
+                    owner.deeds.keys.firstOrNull { titleDeed ->
+                        // get the title deed from the owner
+                        titleDeed::class == deedClass
+                    }?.let { titleDeed ->
+                        // the player pays the owner double the entitled rent
+                        val rent = titleDeed.calculateRent(owner, b)
+                        println("\t\t${player.name} owes 2x \$$rent (\$${rent * 2}) to the owner")
+                        rent * 2
+                    }
+                } ?: throw PropertyOwnershipException("Failed to find the owner of ${deedClass.simpleName}")
+            }
         }
     }
 

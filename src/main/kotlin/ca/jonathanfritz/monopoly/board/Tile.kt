@@ -10,17 +10,17 @@ import kotlin.reflect.KClass
 
 sealed class Tile {
 
-    abstract fun onLanding(player: Player, bank: Bank, board: Board)
+    abstract fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)? = null)
 
     object Go : Tile() {
-        override fun onLanding(player: Player, bank: Bank, board: Board) {
+        override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
             // nothing special happens here unless we're playing with house rules that double salary when the player lands on go
             println("\t\t${player.name} landed on Go")
         }
     }
 
     abstract class Buyable(val deedClass: KClass<out TitleDeed>): Tile() {
-        override fun onLanding(player: Player, bank: Bank, board: Board) {
+        override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
             val owner = board.players.firstOrNull { it.isOwner(deedClass) }
             if (owner != null) {
                 // paying yourself for a thing you own is silly
@@ -34,7 +34,7 @@ sealed class Tile {
                 //  which suggests that the owner should roll an attention check that has a chance of failing to demand rent
                 println("\t\t${player.name} landed on ${deedClass.simpleName}. It is owned by ${owner.name}")
                 val deed = owner.deeds.keys.first { it::class == deedClass }
-                val rent = deed.calculateRent(owner, board)
+                val rent = rentOverride?.invoke(player, bank, board) ?: deed.calculateRent(owner, board)
                 player.pay(owner, rent, "in rent")
             } else {
                 // property is unowned, player that landed on it has the option to buy
@@ -58,28 +58,28 @@ sealed class Tile {
     class UtilityBuyable(deedClass: KClass<out Utility>): Buyable(deedClass)
 
     class CommunityChest(val side: Int): Tile() {
-        override fun onLanding(player: Player, bank: Bank, board: Board) {
+        override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
             println("\t\t${player.name} landed on CommunityChest (side $side)")
             board.communityChest.draw().onDraw(player, bank, board)
         }
     }
 
     object IncomeTax : Tile() {
-        override fun onLanding(player: Player, bank: Bank, board: Board) {
+        override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
             val amount = player.incomeTaxAmount()
             bank.charge(player, amount, "in income tax")
         }
     }
 
     class Chance(val side: Int): Tile() {
-        override fun onLanding(player: Player, bank: Bank, board: Board) {
+        override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
             println("\t\t${player.name} landed on Chance (side $side)")
             board.chance.draw().onDraw(player, bank, board)
         }
     }
 
     object Jail : Tile() {
-        override fun onLanding(player: Player, bank: Bank, board: Board) {
+        override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
             if (player.isInJail) {
                 println("\t\t${player.name} is In Jail")
             } else {
@@ -89,21 +89,21 @@ sealed class Tile {
     }
 
     object FreeParking : Tile() {
-        override fun onLanding(player: Player, bank: Bank, board: Board) {
+        override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
             // this does nothing unless house rule that awards the pot is active
             println("\t\t${player.name} landed on FreeParking")
         }
     }
 
     object GoToJail : Tile() {
-        override fun onLanding(player: Player, bank: Bank, board: Board) {
+        override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
             println("\t\t${player.name} landed on GoToJail")
             board.goToJail(player)
         }
     }
 
     object LuxuryTax : Tile() {
-        override fun onLanding(player: Player, bank: Bank, board: Board) {
+        override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
             bank.charge(player, 100, "in luxury tax")
         }
     }

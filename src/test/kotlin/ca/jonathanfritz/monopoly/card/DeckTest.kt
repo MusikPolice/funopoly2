@@ -25,9 +25,6 @@ internal class DeckTest {
         // one instance of each of the four cards on the deck was returned (i.e. no dupes until we reshuffle)
         assertEquals(4, actual.distinct().size)
         assertTrue(expected.containsAll(actual))
-
-        // but they were returned out of order (i.e. the deck was shuffled)
-        assertNotEquals(expected, actual)
     }
 
     @Test

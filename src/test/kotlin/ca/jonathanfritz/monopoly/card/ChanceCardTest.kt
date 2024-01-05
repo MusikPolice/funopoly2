@@ -3,9 +3,11 @@ package ca.jonathanfritz.monopoly.card
 import ca.jonathanfritz.monopoly.*
 import ca.jonathanfritz.monopoly.board.Bank
 import ca.jonathanfritz.monopoly.board.Board
+import ca.jonathanfritz.monopoly.board.Dice
 import ca.jonathanfritz.monopoly.board.Tile
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Railroad
+import ca.jonathanfritz.monopoly.deed.Utility
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -87,7 +89,107 @@ internal class ChanceCardTest {
         assertEquals(140, player.money)
     }
 
-    // TODO: AdvanceToNearestUtility and AdvanceToNearestRailroad tests
+    @Test
+    fun `advance to nearest utility while not owned`() {
+        val player = Player("Grover", 151)
+        val fakeDice = FakeDice(Dice.Roll(6, 1))
+        val board = Board(
+            listOf(player),
+            dice = fakeDice,
+            chance = Deck(mutableListOf(
+                ChanceCard.AdvanceToNearestUtility
+            ))
+        )
+
+        // on his first turn, Grover will land on Chance and draw the Advance to Nearest Utility Card
+        // this will advance him to Electric Company, which he will buy since it is unowned
+        board.executeRound(1)
+        board.assertPlayerOnUtility(player, Utility.ElectricCompany::class)
+        assertEquals(1, player.money)
+        assertTrue(player.isOwner(Utility.ElectricCompany::class))
+    }
+
+    @Test
+    fun `advance to nearest utility while owned and pay 10x the dice roll test`() {
+        val grover = Player("Grover", 100)
+        val cookie = Player("Cookie Monster", 150)
+        val bank = Bank()
+        val fakeDice = FakeDice(Dice.Roll(6, 1), Dice.Roll(5, 5), Dice.Roll(2, 1))
+        val board = Board(
+            listOf(grover, cookie),
+            bank,
+            dice = fakeDice,
+            chance = Deck(mutableListOf(
+                ChanceCard.AdvanceToNearestUtility
+            ))
+        )
+
+        // Cookie Monster owns Electric Company
+        bank.sellPropertyToPlayer(Utility.ElectricCompany::class, cookie)
+        assertTrue(cookie.isOwner(Utility.ElectricCompany::class))
+        assertEquals(0, cookie.money)
+
+        // on his first turn, Grover will land on Chance and draw the Advance to Nearest Utility Card
+        // this will advance him to Electric Company, where he will pay 10x the dice roll to Cookie ($100), who owns it
+        board.executeRound(1)
+        board.assertPlayerOnUtility(grover, Utility.ElectricCompany::class)
+        assertEquals(0, grover.money)
+
+        // on his first turn, Cookie will roll a 3, putting him on Baltic Avenue, which he will buy for $60
+        // $10 x 10 == $100 - $60 == $40
+        assertEquals(40, cookie.money)
+    }
+
+    @Test
+    fun `advance to nearest railroad while not owned`() {
+        val player = Player("Grover", 201)
+        val fakeDice = FakeDice(Dice.Roll(6, 1))
+        val board = Board(
+            listOf(player),
+            dice = fakeDice,
+            chance = Deck(mutableListOf(
+                ChanceCard.AdvanceToNearestRailroad
+            ))
+        )
+
+        // on his first turn, Grover will land on Chance and draw the Advance to Nearest Railroad Card
+        // this will advance him to Pennsylvania Railroad, which he will buy since it is unowned
+        board.executeRound(1)
+        board.assertPlayerOnRailroad(player, Railroad.PennsylvaniaRailroad::class)
+        assertEquals(1, player.money)
+        assertTrue(player.isOwner(Railroad.PennsylvaniaRailroad::class))
+    }
+
+    @Test
+    fun `advance to nearest railroad while owned and pay 2x normal rent test`() {
+        val grover = Player("Grover", 50)
+        val cookie = Player("Cookie Monster", 200)
+        val fakeDice = FakeDice(Dice.Roll(6, 1), Dice.Roll(2, 1))
+        val bank = Bank()
+        val board = Board(
+            listOf(grover, cookie),
+            bank,
+            dice = fakeDice,
+            chance = Deck(mutableListOf(
+                ChanceCard.AdvanceToNearestRailroad
+            ))
+        )
+
+        // Cookie Monster owns Pennsylvania Railroad
+        bank.sellPropertyToPlayer(Railroad.PennsylvaniaRailroad::class, cookie)
+        assertTrue(cookie.isOwner(Railroad.PennsylvaniaRailroad::class))
+        assertEquals(0, cookie.money)
+
+        // on his first turn, Grover will land on Chance and draw the Advance to Nearest Railroad Card
+        // this will advance him to Pennsylvania Railroad, where he will pay 2x the normal rent to Cookie ($50), who owns it
+        board.executeRound(1)
+        board.assertPlayerOnRailroad(grover, Railroad.PennsylvaniaRailroad::class)
+        assertEquals(0, grover.money)
+
+        // on his first turn, Cookie will roll a 3, putting him on Baltic Avenue, which he will not buy for lack of funds
+        // $25 x 2 == $50
+        assertEquals(50, cookie.money)
+    }
 
     @Test
     fun `bank pays you dividend test`() {
