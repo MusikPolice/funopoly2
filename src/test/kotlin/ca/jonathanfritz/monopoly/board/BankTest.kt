@@ -13,7 +13,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 internal class BankTest {
-
     @Test
     fun `pay player negative value throws exception`() {
         val player = Player("Cookie", 500)
@@ -278,7 +277,11 @@ internal class BankTest {
         bank.sellHouseToPlayer(Property.ParkPlace::class, player, Board(listOf(player)))
         assertEquals(0, player.money)
 
-        val development = player.deeds.filter { it.key::class == Property.ParkPlace::class }.values.first()
+        val development =
+            player.deeds
+                .filter { it.key::class == Property.ParkPlace::class }
+                .values
+                .first()
         assertEquals(1, development.numHouses)
         assertFalse(development.hasHotel)
         assertEquals(0, player.money)
@@ -316,7 +319,7 @@ internal class BankTest {
 
         // player builds four houses on Park Place but only three on Boardwalk
         bank.sellHouseToPlayer(Property.ParkPlace::class, player, Board(listOf(player)))
-        (1 .. 3).forEach { _ ->
+        (1..3).forEach { _ ->
             bank.sellHouseToPlayer(Property.Boardwalk::class, player, Board(listOf(player)))
             bank.sellHouseToPlayer(Property.ParkPlace::class, player, Board(listOf(player)))
         }
@@ -332,7 +335,6 @@ internal class BankTest {
 
         bank.sellHotelToPlayer(Property.ParkPlace::class, player, Board(listOf(player)))
         bank.sellHotelToPlayer(Property.Boardwalk::class, player, Board(listOf(player)))
-
     }
 
     @Test
@@ -345,7 +347,7 @@ internal class BankTest {
         assertTrue(player.hasMonopoly(ColourGroup.DarkBlue))
 
         // hotels build as expected
-        (1 .. 4).forEach { _ ->
+        (1..4).forEach { _ ->
             bank.sellHouseToPlayer(Property.ParkPlace::class, player, Board(listOf(player)))
             bank.sellHouseToPlayer(Property.Boardwalk::class, player, Board(listOf(player)))
         }
@@ -371,7 +373,7 @@ internal class BankTest {
         assertTrue(player.hasMonopoly(ColourGroup.DarkBlue))
 
         // the player can build on each of their properties
-        (1 .. 4).forEach { _ ->
+        (1..4).forEach { _ ->
             bank.sellHouseToPlayer(Property.ParkPlace::class, player, Board(listOf(player)))
             bank.sellHouseToPlayer(Property.Boardwalk::class, player, Board(listOf(player)))
         }
@@ -393,7 +395,7 @@ internal class BankTest {
         bank.sellDeedToPlayer(Property.Boardwalk::class, player, board)
         assertTrue(player.hasMonopoly(ColourGroup.DarkBlue))
 
-        (1 .. 4).forEach { _ ->
+        (1..4).forEach { _ ->
             bank.sellHouseToPlayer(Property.ParkPlace::class, player, board)
             bank.sellHouseToPlayer(Property.Boardwalk::class, player, board)
         }
@@ -413,7 +415,7 @@ internal class BankTest {
         bank.sellDeedToPlayer(Property.Boardwalk::class, player, Board(listOf(player)))
         assertTrue(player.hasMonopoly(ColourGroup.DarkBlue))
 
-        (1 .. 4).forEach { _ ->
+        (1..4).forEach { _ ->
             bank.sellHouseToPlayer(Property.ParkPlace::class, player, Board(listOf(player)))
             bank.sellHouseToPlayer(Property.Boardwalk::class, player, Board(listOf(player)))
         }

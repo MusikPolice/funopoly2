@@ -38,4 +38,3 @@ tasks.withType<JavaCompile> {
 application {
     mainClass.set("ca.jonathanfritz.monopoly.MonopolyKt")
 }
-
