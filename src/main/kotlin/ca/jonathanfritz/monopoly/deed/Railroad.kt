@@ -21,11 +21,18 @@ sealed class Railroad(): TitleDeed(ColourGroup.Railroads, 200, 100) {
         fun <R: Railroad> of(kClass: KClass<R>): Railroad = values.getValue(kClass)
     }
 
-    // rent is based on number of railroads owned - $25 if one, $50 if 2, $100 if three, $200 if four
+    // rent is based on number of unmortgaged railroads owned - $25 if one, $50 if 2, $100 if three, $200 if four
     override fun calculateRent(owner: Player, board: Board): Int {
         if (owner.getDevelopment(this::class).isMortgaged) return 0
 
-        return when(owner.deeds.keys.count { it is Railroad }) {
+        // mortgaged railroads are not included in the count
+        val numUnmortgagedRailroads = owner.deeds.filter {
+            it.key is Railroad
+        }.filterNot {
+            it.value.isMortgaged
+        }.count()
+
+        return when(numUnmortgagedRailroads) {
             1 -> 25
             2 -> 50
             3 -> 100

@@ -20,6 +20,14 @@ sealed class Utility(): TitleDeed(ColourGroup.Utilities, 150, 75) {
     // if one utility is owned, rent is 4x dice roll; if both are owned, rent is 10x dice roll
     override fun calculateRent(owner: Player, board: Board): Int {
         if (owner.getDevelopment(this::class).isMortgaged) return 0
-        return board.dice.previousRoll().amount * if (owner.hasMonopoly(ColourGroup.Utilities)) 10 else 4
+
+        // mortgaged utilities are not included in the count
+        val numUnmortgagedUtilities = owner.deeds.filter {
+            it.key is Utility
+        }.filterNot {
+            it.value.isMortgaged
+        }.count()
+
+        return board.dice.previousRoll().amount * if (numUnmortgagedUtilities == 2) 10 else 4
     }
 }

@@ -6,7 +6,7 @@ import ca.jonathanfritz.monopoly.card.Card
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.TitleDeed
-import ca.jonathanfritz.monopoly.exception.InsufficientFundsException
+import ca.jonathanfritz.monopoly.exception.BankruptcyException
 import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
 import kotlin.math.ceil
 import kotlin.math.min
@@ -25,6 +25,9 @@ open class Player(
     // the properties that this player owns, along with their development state
     val deeds: MutableMap<TitleDeed, Development> = mutableMapOf(),
 
+    // true if the player has fully liquidated all assets and does not have enough money to cover a debt
+    private var isBankrupt: Boolean = false,
+
     // any Get out of Jail Free cards that the player has in their inventory
     private val getOutOfJailFreeCards: MutableList<Card.GetOutOfJailFreeCard> = mutableListOf()
 ) {
@@ -37,6 +40,10 @@ open class Player(
             remainingTurnsInJail = if (value) { 3 } else { 0 }
             field = value
         }
+
+    // expose isBankrupt as read-only
+    fun isBankrupt() = isBankrupt
+
     fun decrementRemainingTurnsInJail(): Int {
         if (isInJail && remainingTurnsInJail > 0) {
             if (remainingTurnsInJail == 1) {
@@ -82,9 +89,11 @@ open class Player(
     // give the player a get out of jail free card for later use
     fun grantGetOutOfJailFreeCard(card: Card.GetOutOfJailFreeCard) = getOutOfJailFreeCards.add(card)
 
+    fun hasGetOutOfJailFreeCard(): Boolean = getOutOfJailFreeCards.isNotEmpty()
+
     // returns an instance of a Get out of Jail Free card if the player intends to use one, else null
     fun useGetOutOfJailFreeCard(): Card.GetOutOfJailFreeCard? {
-        if (isInJail && getOutOfJailFreeCards.isNotEmpty()) {
+        if (isInJail && hasGetOutOfJailFreeCard()) {
             println("\t\t$name uses a Get out of Jail Free card")
             return getOutOfJailFreeCards.removeAt(0)
         }
@@ -94,17 +103,21 @@ open class Player(
     // returns true if the player intends to pay a fine to get out of jail on this turn
     // TODO: there are some cases in which the player should stay in jail rather than paying the fine
     //  consider only paying if money > highest rent on the board > $50
-    open fun isPayingGetOutOfJailEarlyFee(amount: Int) = isInJail && getOutOfJailFreeCards.isEmpty() && remainingTurnsInJail > 0 && money > amount
+    open fun isPayingGetOutOfJailEarlyFee(amount: Int) =
+        isInJail && !hasGetOutOfJailFreeCard() && remainingTurnsInJail > 0 && money > amount
 
     // returns a Pair<num houses, num hotels> that includes developments on all owned properties
     fun countDevelopments(): Pair<Int, Int> =
         deeds.values.sumOf { it.numHouses } to deeds.values.sumOf { (if (it.hasHotel) 1 else 0).toInt() }
 
-    // TODO: rather than throw InsufficientFundsException here, attempt to liquidate assets or mortgage properties to
-    //  to cover the amount due. Pipe bank charges through that same logic!
-    fun pay(other: Player, amount: Int, reason: String = "") {
+    fun pay(amount: Int, other: Player, bank: Bank, board: Board, reason: String = "") {
         if (amount < 0) throw IllegalArgumentException("Amount to pay must be greater than $0")
-        if (money < amount) throw InsufficientFundsException("$name does not have $amount")
+        if (money < amount) try {
+            liquidateAssets(amount, bank, board)
+        } catch (ex: BankruptcyException) {
+            declareBankruptcy(other)
+            return
+        }
 
         println("\t\t$name pays ${other.name} \$$amount $reason")
         money -= amount
@@ -142,16 +155,134 @@ open class Player(
             // even building rules may limit the properties that can be developed at this time
             // choose the first one that we are currently allowed to build on
             when (getDevelopment(candidateProperty::class).numHouses) {
-                4 -> candidateProperty.addingHotelRespectsEvenBuildingRules(this)
+                4 -> candidateProperty.addingOrRemovingHotelRespectsEvenBuildingRules(this)
                 else -> candidateProperty.addingHouseRespectsEvenBuildingRules(this)
             }
         }?.let { property ->
             // if we found a property that can be developed, build a house or hotel on it as appropriate
             when(getDevelopment(property::class).numHouses) {
-                4 -> bank.buildHotel(property::class, this)
-                else -> bank.buildHouse(property::class, this)
+                4 -> bank.sellHotelToPlayer(property::class, this, board)
+                else -> bank.sellHouseToPlayer(property::class, this, board)
             }
         }
+    }
+
+    // when this is called, the player will attempt to mortgage or sell enough assets to cover the specified amount
+    // TODO: this code can be tidied up
+    fun liquidateAssets(requiredAmount: Int, bank: Bank, board: Board) {
+        // Step 1: attempt to cover the required amount by mortgaging properties that are not a part of a monopoly
+        // we earn double rent from and can develop monopolies, so it's best not to break them up if possible
+        deeds.filterNot { titleDevelopment ->
+            hasMonopoly(titleDevelopment.key.colourGroup)
+        }.selectDeedsToMortgage().takeWhile { deed ->
+            bank.mortgageDeed(deed::class, this)
+            money < requiredAmount
+        }
+        if (money >= requiredAmount) return
+
+        do {
+            // Step 2: attempt to cover the remaining amount by selling houses and hotels
+            // selling houses/hotels nets half of the building's purchase value and must adhere to even building rules
+            deeds.filter { it.value.hasHotel || it.value.numHouses > 0 }
+                .filter { it.key is Property }
+                .map { (it.key as Property) to it.value.hasHotel }
+                .sortedBy {
+                    // sell off buildings that net the lowest rent first to minimize income loss
+                    it.first.calculateRent(this, board)
+                }
+                .filter { (deed, hasHotel) ->
+                    if (hasHotel) {
+                        deed.addingOrRemovingHotelRespectsEvenBuildingRules(this)
+                    } else {
+                        deed.removingHouseRespectsEvenBuildingRules(this)
+                    }
+                }.takeWhile { (deed, hasHotel) ->
+                    if (hasHotel) {
+                        bank.buyHotelFromPlayer(deed::class, this)
+                    } else {
+                        bank.buyHouseFromPlayer(deed::class, this)
+                    }
+                    money < requiredAmount
+                }
+            if (money >= requiredAmount) return
+
+            // Step 3: second pass at attempting to mortgage properties
+            // this time, only consider properties that are a part of a monopoly and have been newly undeveloped
+            deeds.filter { titleDevelopment ->
+                hasMonopoly(titleDevelopment.key.colourGroup)
+            }.selectDeedsToMortgage().takeWhile { deed ->
+                bank.mortgageDeed(deed::class, this)
+                money < requiredAmount
+            }
+            if (money >= requiredAmount) return
+
+        } while (!hasFullyLiquidatedAssets())
+
+        // if all else fails, this player is bankrupt
+
+        // TODO: the target player and/or bank needs to get all of our assets
+
+        println("\t\t$name owes \$$requiredAmount but has liquidated all assets and only has \$$money remaining")
+        throw BankruptcyException("$name has insufficient funds (\$$money < \$$requiredAmount)")
+    }
+
+    private fun hasFullyLiquidatedAssets(): Boolean =
+        deeds.isEmpty() || deeds.values.all { development ->
+            development.numHouses == 0 && !development.hasHotel && development.isMortgaged
+        }
+
+    fun declareBankruptcy(bank: Bank, board: Board) {
+        if (!hasFullyLiquidatedAssets())
+            throw IllegalStateException("$name has declared bankruptcy without first liquidating their assets")
+
+        // money
+        bank.charge(money, this, board, "in the bankruptcy settlement")
+
+        // cards
+        while (hasGetOutOfJailFreeCard()) board.returnGetOutOfJailFreeCard(this.getOutOfJailFreeCards.removeAt(0))
+
+        // deeds - this is meant to trigger an auction
+        bank.transferMortgagedDeeds(this.deeds.keys)
+        this.deeds.clear()
+
+        isBankrupt = true
+        println("\t\t$name is bankrupt!")
+    }
+
+    private fun declareBankruptcy(player: Player) {
+        if (!hasFullyLiquidatedAssets())
+            throw IllegalStateException("$name has declared bankruptcy without first liquidating their assets")
+
+        // TODO: transfer this player's assets to other; other must immediately pay a penalty on mortgaged properties
+        //  ideally, other player immediately unmortgages all newly acquired properties, but can elect to pay a 10% fee
+        //  to the bank to assume the mortgage
+
+        isBankrupt = true
+        println("\t\t$name is bankrupt!")
+    }
+
+    private fun Map<TitleDeed, Development>.selectDeedsToMortgage(): List<TitleDeed> {
+        return this.filterNot { titleDevelopment ->
+            // we can't mortgage a property that has already been mortgaged
+            titleDevelopment.value.isMortgaged
+        }.filterNot { titleDevelopment ->
+            // we can't mortgage a property that has been developed
+            titleDevelopment.value.hasHotel || titleDevelopment.value.numHouses > 0
+        }.map { titleDevelopment ->
+            titleDevelopment.key
+        }.sortedWith(
+            compareByDescending<TitleDeed> { deed ->
+                // the number of properties that need to be purchased before we have a monopoly on this colour group
+                // intent here is to avoid mortgaging properties that are most likely to form a monopoly in future turns
+                val numDeedsInColourGroup = deed.colourGroup.titleDeeds().values.count()
+                val numOwnedDeedsInColourGroup = deeds.keys.count { it.colourGroup == deed.colourGroup }
+                numDeedsInColourGroup - numOwnedDeedsInColourGroup
+            }.thenBy { deed ->
+                // we want to mortgage the property with the smallest value first to make it easier to pay off the debt
+                // this also means that cheaper properties that yield smaller rents are most likely to be mortgaged
+                deed.mortgageValue
+            }
+        )
     }
 
     data class Development(

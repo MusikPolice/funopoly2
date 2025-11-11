@@ -32,17 +32,21 @@ sealed class Tile {
                 // property is owned by someone else, player that landed on it must pay rent
                 // TODO: rules say "The owner may not collect the rent if he/she fails to ask for it before the second player following throws the dice"
                 //  which suggests that the owner should roll an attention check that has a chance of failing to demand rent
-                println("\t\t${player.name} landed on ${deedClass.simpleName}. It is owned by ${owner.name}")
                 val deed = owner.deeds.keys.first { it::class == deedClass }
-                val rent = rentOverride?.invoke(player, bank, board) ?: deed.calculateRent(owner, board)
-                player.pay(owner, rent, "in rent")
+                if (owner.getDevelopment(deedClass).isMortgaged) {
+                    println("\t\t${player.name} landed on ${deedClass.simpleName}. It is owned by ${owner.name}, but is mortgaged. No rent due.")
+                } else {
+                    println("\t\t${player.name} landed on ${deedClass.simpleName}. It is owned by ${owner.name}")
+                    val rent = rentOverride?.invoke(player, bank, board) ?: deed.calculateRent(owner, board)
+                    player.pay(rent, owner, bank, board, "in rent")
+                }
             } else {
                 // property is unowned, player that landed on it has the option to buy
                 val deed = bank.deed(deedClass) ?: throw PropertyOwnershipException("${deedClass.simpleName} is not available for purchase")
                 println("\t\t${player.name} landed on ${deedClass.simpleName}. It can be purchased for \$${deed.price}")
 
                 if (player.isBuying(deed)) {
-                   bank.sellPropertyToPlayer(deedClass, player)
+                   bank.sellDeedToPlayer(deedClass, player, board)
                } else {
                    // TODO: a wild auction appears!
                    println("\t\t${player.name} declines to purchase the property")
@@ -67,7 +71,7 @@ sealed class Tile {
     object IncomeTax : Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
             val amount = player.incomeTaxAmount()
-            bank.charge(player, amount, "in income tax")
+            bank.charge(amount, player, board, "in income tax")
         }
     }
 
@@ -104,7 +108,7 @@ sealed class Tile {
 
     object LuxuryTax : Tile() {
         override fun onLanding(player: Player, bank: Bank, board: Board, rentOverride: ((Player, Bank, Board) -> Int)?) {
-            bank.charge(player, 100, "in luxury tax")
+            bank.charge(100, player, board, "in luxury tax")
         }
     }
 }

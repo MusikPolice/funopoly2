@@ -102,7 +102,7 @@ sealed class ChanceCard : Card() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             val (houses, hotels) = player.countDevelopments()
             val fee = houses * 25 + hotels * 100
-            bank.charge(player, fee, "for general repairs on $houses houses and $hotels hotels")
+            bank.charge(fee, player, board, "for general repairs on $houses houses and $hotels hotels")
         }
     }
 
@@ -113,7 +113,7 @@ sealed class ChanceCard : Card() {
     object ChairmanOfTheBoard: ChanceCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             board.players.filter { it != player }.forEach { other ->
-                player.pay(other, 50, "as Chairman of the Board")
+                player.pay(50, other, bank, board, "as Chairman of the Board")
             }
         }
     }

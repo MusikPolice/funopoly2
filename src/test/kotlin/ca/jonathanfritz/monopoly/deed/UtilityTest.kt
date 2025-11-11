@@ -51,6 +51,26 @@ internal class UtilityTest {
     }
 
     @Test
+    fun `rent for unmortgaged utilities ignores ownership of another utility that is mortgaged`() {
+        val owner = Player(
+            "Big Bird",
+            deeds = mutableMapOf(
+                ElectricCompany() to Player.Development(isMortgaged = true),
+                WaterWorks() to Player.Development()
+            )
+        )
+        val fakeDice = FakeDice(Dice.Roll(3, 1))
+        val board = Board(listOf(owner), dice = fakeDice)
+
+        // player rolled a four
+        fakeDice.roll()
+
+        // because both utilities are owned, rent would normally be 10x dice roll, but one utility is mortgaged, so it
+        // is not counted and rent falls back to 4x the dice roll
+        assertEquals(16, WaterWorks().calculateRent(owner, board))
+    }
+
+    @Test
     fun `rent is 4x dice roll if one utility is owned`() {
         val owner = Player(
             "Big Bird",

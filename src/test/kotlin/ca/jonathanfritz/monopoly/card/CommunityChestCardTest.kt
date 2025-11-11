@@ -102,16 +102,16 @@ internal class CommunityChestCardTest {
         val board = Board(listOf(player))
 
         // player has partially developed the light blue properties
-        bank.sellPropertyToPlayer(Property.OrientalAvenue::class, player)
-        bank.sellPropertyToPlayer(Property.VermontAvenue::class, player)
-        bank.sellPropertyToPlayer(Property.ConnecticutAvenue::class, player)
+        bank.sellDeedToPlayer(Property.OrientalAvenue::class, player, board)
+        bank.sellDeedToPlayer(Property.VermontAvenue::class, player, board)
+        bank.sellDeedToPlayer(Property.ConnecticutAvenue::class, player, board)
 
         (1 .. 4).forEach { _ ->
-            bank.buildHouse(Property.OrientalAvenue::class, player)
-            bank.buildHouse(Property.VermontAvenue::class, player)
-            bank.buildHouse(Property.ConnecticutAvenue::class, player)
+            bank.sellHouseToPlayer(Property.OrientalAvenue::class, player, board)
+            bank.sellHouseToPlayer(Property.VermontAvenue::class, player, board)
+            bank.sellHouseToPlayer(Property.ConnecticutAvenue::class, player, board)
         }
-        bank.buildHotel(Property.ConnecticutAvenue::class, player)
+        bank.sellHotelToPlayer(Property.ConnecticutAvenue::class, player, board)
 
         val playerBalance = player.money
 

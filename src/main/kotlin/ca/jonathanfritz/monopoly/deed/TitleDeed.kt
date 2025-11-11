@@ -27,25 +27,41 @@ sealed class TitleDeed(
     //  1. all properties in the group have the same number of houses; or
     //  2. the target property has one fewer house than one or both of the other properties in the group, and an
     //      equal number of houses to any remaining properties in the group
+    // TODO: should this live in Property? Can't build on Utilities or Railroads
     fun addingHouseRespectsEvenBuildingRules(player: Player): Boolean {
-        val houseCounts = player.deeds.filter { deedDevelopment -> deedDevelopment.key.colourGroup == colourGroup }
-            .map { deedDevelopment -> deedDevelopment.key::class to deedDevelopment.value.numHouses }
-            .groupBy { deedHouseCount -> deedHouseCount.second }
-            .map { it.key to it.value.map { deedHouseCount -> deedHouseCount.first } }
-            .toMap()
+        return evaluateEvenBuildingRules(player) { houseCounts, minHouses, _ ->
+            houseCounts[minHouses]?.contains(this::class) == true
+        }
+    }
+
+    fun removingHouseRespectsEvenBuildingRules(player: Player): Boolean {
+        return evaluateEvenBuildingRules(player) { houseCounts, _, maxHouses ->
+            houseCounts[maxHouses]?.contains(this::class) == true
+        }
+    }
+
+    private fun evaluateEvenBuildingRules(player: Player, groupEval: (Map<Int, List<KClass<out TitleDeed>>>, Int, Int) -> Boolean): Boolean {
+        val houseCounts = player.countHouses()
         val allDeedsHaveSameHouseCount = houseCounts.keys.size == 1
         val twoHouseCountGroups = houseCounts.keys.size == 2
         val minHouses = houseCounts.keys.min()
         val maxHouses = houseCounts.keys.max()
         val minHousesIsOneLessThanMaxHouses = minHouses == maxHouses - 1
-        val targetDeedHasMinHouses = houseCounts[minHouses]?.contains(this::class) == true
-
-        return allDeedsHaveSameHouseCount || (twoHouseCountGroups && minHousesIsOneLessThanMaxHouses && targetDeedHasMinHouses)
+        return allDeedsHaveSameHouseCount ||
+                (twoHouseCountGroups && minHousesIsOneLessThanMaxHouses && groupEval.invoke(houseCounts, minHouses, maxHouses))
     }
+
+    private fun Player.countHouses() =
+        deeds.filter { deedDevelopment -> deedDevelopment.key.colourGroup == colourGroup }
+            .map { deedDevelopment -> deedDevelopment.key::class to deedDevelopment.value.numHouses }
+            .groupBy { deedHouseCount -> deedHouseCount.second }
+            .map { it.key to it.value.map { deedHouseCount -> deedHouseCount.first } }
+            .toMap()
 
     // hotels must be built evenly
     // all properties in the monopoly group must already have either four houses or a hotel
-    fun addingHotelRespectsEvenBuildingRules(player: Player): Boolean {
+    // TODO: should this live in Property? Can't build on Utilities or Railroads
+    fun addingOrRemovingHotelRespectsEvenBuildingRules(player: Player): Boolean {
         return player.deeds
             .filter { deedDevelopment ->
                 deedDevelopment.key.colourGroup == colourGroup

@@ -31,13 +31,13 @@ sealed class Card {
 
     open class BankPaysYou(private val amount: Int, private val message: String) : Card() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
-            bank.pay(player, amount, message)
+            bank.pay(amount, player, message)
         }
     }
 
     open class YouPayBank(private val amount: Int, private val message: String) : Card() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
-            bank.charge(player, amount, message)
+            bank.charge(amount, player, board, message)
         }
     }
 }

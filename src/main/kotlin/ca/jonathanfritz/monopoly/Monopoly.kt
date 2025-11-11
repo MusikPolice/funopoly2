@@ -5,12 +5,12 @@ import ca.jonathanfritz.monopoly.board.Board
 import kotlin.random.Random
 
 // TODO:
-//  players purchase property when landing on a buyable
-//  rent calculations
-//  developing properties for fun and profit
-//  Player.liquidateAssets(amount: Int) should be the only thrower of InsufficientFundsException
-//  trading?
+//  implement asset transfer on bankruptcy
+//  update rules to match 2023 box edition
 //  start collecting stats on landings, rounds, networth deltas, etc
+//  property auctions on decline to buy?
+//  trading between players?
+//  house rules
 class Monopoly(
     private val players: List<Player>,
     private val rng: Random = Random.Default,
@@ -19,9 +19,10 @@ class Monopoly(
     private val config: Config = Config()
 ) {
     init {
+        println("Starting a new game with ${players.size} players:")
         players.forEach { player ->
             // the bank grants each player $1500 starting cash
-            bank.pay(player, 1500, "starting salary")
+            bank.pay(1500, player, "in starting salary")
 
             // each player starts on Go
             player.position = 0
@@ -32,14 +33,17 @@ class Monopoly(
         (1 .. config.maxRounds).forEach { round ->
             board.executeRound(round)
 
-            // TODO: capture some kind of game state after each round
-            //  could be used for testing, debugging, post-game analysis, or eventually for animating individual games
+            // if all but one player has been bankrupted, the game is over
+            if (players.count { it.isBankrupt() } == players.size - 1) {
+                println("\nGame over!")
+                return
+            }
         }
     }
 
     // TODO: add properties here that change gameplay to reflect deviations from the official rules that we want to simulate
     data class Config (
-        val maxRounds: Int = 50
+        val maxRounds: Int = 100
     )
 }
 

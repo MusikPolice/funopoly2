@@ -48,6 +48,18 @@ internal class RailroadTest {
     }
 
     @Test
+    fun `rent for unmortgaged railroad ignores ownership of another railroad that is mortgaged`() {
+        val owner = Player(
+            "Big Bird",
+            deeds = mutableMapOf(
+                ReadingRailroad() to Player.Development(isMortgaged = true),
+                PennsylvaniaRailroad() to Player.Development(),
+            )
+        )
+        assertEquals(25, PennsylvaniaRailroad().calculateRent(owner, Board(listOf(owner))))
+    }
+
+    @Test
     fun `rent with one owned railroad is $25`() {
         val owner = Player(
             "Big Bird",

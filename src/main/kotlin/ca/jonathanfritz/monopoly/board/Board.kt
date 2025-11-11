@@ -116,7 +116,7 @@ class Board(
         println("\nRound $round:")
 
         // in each round, every player gets between one and three turns on which to affect the game state
-        players.forEach { player ->
+        players.filterNot { it.isBankrupt() }.forEach { player ->
             println("\n\tStarting ${player.name}'s turn ${if (player.isInJail) "In" else "on"} ${player.tileName()} with \$${player.money}")
 
             // the player can get out of jail early by using a Get Out of Jail Free card or by paying a fee
@@ -150,7 +150,7 @@ class Board(
                 } else if (player.isInJail) {
                     // the player has some number of turns to roll doubles, after which they must pay a fine
                     if (player.decrementRemainingTurnsInJail() == 0) {
-                        bank.charge(player, config.getOutOfJailEarlyFeeAmount, "to get out ouf jail")
+                        bank.charge(config.getOutOfJailEarlyFeeAmount, player, this, "to get out ouf jail")
                     }
                 }
                 println("\t\t${player.name} rolled a ${diceRoll.amount} ${if (diceRoll.isDoubles) "(doubles)" else ""}")
@@ -163,9 +163,9 @@ class Board(
                 // after rolling the dice, players can opt to develop their monopolies
                 player.developProperties(bank, this)
 
-                // TODO: trading, mortgaging, etc
+                // TODO: trading, unmortgaging, etc
 
-            } while (diceRoll.isDoubles && doublesCount < 3)
+            } while (diceRoll.isDoubles && doublesCount < 3 && !player.isBankrupt())
         }
     }
 
@@ -173,15 +173,19 @@ class Board(
         val card = player.useGetOutOfJailFreeCard()
         if (card != null) {
             // return the card to the appropriate deck and let the player out of jail
-            when (card) {
-                is ChanceCard.GetOutOfJailFree -> chance.add(card)
-                is CommunityChestCard.GetOutOfJailFree -> communityChest.add(card)
-            }
+            returnGetOutOfJailFreeCard(card)
             player.isInJail = false
         } else if (player.isPayingGetOutOfJailEarlyFee(config.getOutOfJailEarlyFeeAmount)) {
             // charge the player a fee and let them out of jail
-            bank.charge(player, config.getOutOfJailEarlyFeeAmount, "to get out of jail early")
+            bank.charge(config.getOutOfJailEarlyFeeAmount, player, this, "to get out of jail early")
             player.isInJail = false
+        }
+    }
+
+    fun returnGetOutOfJailFreeCard(card: Card.GetOutOfJailFreeCard) {
+        when (card) {
+            is ChanceCard.GetOutOfJailFree -> chance.add(card)
+            is CommunityChestCard.GetOutOfJailFree -> communityChest.add(card)
         }
     }
 
@@ -219,7 +223,7 @@ class Board(
         // so if direction is positive and position is less than old position, the player either landed on or passed go
         val passedGo = offset > 0 && player.position < oldPosition
         if (passedGo && collectSalary) {
-            bank.pay(player, 200, "for passing go")
+            bank.pay(200, player, "for passing go")
         }
 
         // process the events triggered by the player having landed on the new tile

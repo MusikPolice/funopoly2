@@ -32,7 +32,7 @@ sealed class CommunityChestCard: Card() {
     object GrandOperaOpening: CommunityChestCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             board.players.filter { it != player }.forEach { other ->
-                other.pay(player, 50, "for opera tickets on opening night")
+                other.pay(50, player, bank, board, "for opera tickets on opening night")
             }
         }
     }
@@ -47,7 +47,7 @@ sealed class CommunityChestCard: Card() {
     object YourBirthday: CommunityChestCard() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             board.players.filter { it != player }.forEach { other ->
-                other.pay(player, 10, "as a birthday gift")
+                other.pay(10, player, bank, board, "as a birthday gift")
             }
         }
     }
@@ -69,7 +69,7 @@ sealed class CommunityChestCard: Card() {
         override fun onDraw(player: Player, bank: Bank, board: Board) {
             val (houses, hotels) = player.countDevelopments()
             val fee = houses * 40 + hotels * 115
-            bank.charge(player, fee, "for street repairs on $houses houses and $hotels hotels")
+            bank.charge(fee, player, board, "for street repairs on $houses houses and $hotels hotels")
         }
     }
 

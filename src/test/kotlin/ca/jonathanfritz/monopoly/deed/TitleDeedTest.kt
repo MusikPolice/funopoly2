@@ -2,13 +2,12 @@ package ca.jonathanfritz.monopoly.deed
 
 import ca.jonathanfritz.monopoly.Player
 import ca.jonathanfritz.monopoly.board.Bank
+import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.deed.Property.*
 import ca.jonathanfritz.monopoly.deed.Railroad.*
 import ca.jonathanfritz.monopoly.deed.Utility.*
-import ca.jonathanfritz.monopoly.exception.PropertyDevelopmentException
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -71,9 +70,10 @@ internal class TitleDeedTest {
     fun addingHouseRespectsEvenBuildingRulesTest() {
         val player = Player("Count von Count", 5000)
         val bank = Bank()
+        val board = Board(listOf(player), bank)
 
-        bank.sellPropertyToPlayer(ParkPlace::class, player)
-        bank.sellPropertyToPlayer(Boardwalk::class, player)
+        bank.sellDeedToPlayer(ParkPlace::class, player, board)
+        bank.sellDeedToPlayer(Boardwalk::class, player, board)
         assertTrue(player.hasMonopoly(ColourGroup.DarkBlue))
 
         val parkPlace = player.deeds.keys.first { it::class == ParkPlace::class }
@@ -81,7 +81,7 @@ internal class TitleDeedTest {
 
         // can build a single house on either property
         assertTrue(parkPlace.addingHouseRespectsEvenBuildingRules(player))
-        bank.buildHouse(ParkPlace::class, player)
+        bank.sellHouseToPlayer(ParkPlace::class, player, board)
 
         // attempting to build another house on that property without first developing
         // the other property in the monopoly throws an exception
@@ -89,18 +89,18 @@ internal class TitleDeedTest {
 
         // the other property in the monopoly can be developed
         assertTrue(boardwalk.addingHouseRespectsEvenBuildingRules(player))
-        bank.buildHouse(Boardwalk::class, player)
+        bank.sellHouseToPlayer(Boardwalk::class, player, board)
 
         // because the properties are evenly developed, a second house can be added to either
         assertTrue(boardwalk.addingHouseRespectsEvenBuildingRules(player))
-        bank.buildHouse(Boardwalk::class, player)
+        bank.sellHouseToPlayer(Boardwalk::class, player, board)
 
         // adding a third house to Boardwalk throws an exception
         assertFalse(boardwalk.addingHouseRespectsEvenBuildingRules(player))
 
         // but Park Place can still be developed, leaving us with two houses on each property
         assertTrue(parkPlace.addingHouseRespectsEvenBuildingRules(player))
-        bank.buildHouse(ParkPlace::class, player)
+        bank.sellHouseToPlayer(ParkPlace::class, player, board)
 
         assertTrue(player.deeds.map { it.value.numHouses }.all { it == 2 })
     }
@@ -109,32 +109,33 @@ internal class TitleDeedTest {
     fun addingHotelRespectsEvenBuildingRulesTest() {
         val player = Player("Count von Count", 5000)
         val bank = Bank()
+        val board = Board(listOf(player), bank)
 
-        bank.sellPropertyToPlayer(ParkPlace::class, player)
-        bank.sellPropertyToPlayer(Boardwalk::class, player)
+        bank.sellDeedToPlayer(ParkPlace::class, player, board)
+        bank.sellDeedToPlayer(Boardwalk::class, player, board)
         assertTrue(player.hasMonopoly(ColourGroup.DarkBlue))
 
         val parkPlace = player.deeds.keys.first { it::class == ParkPlace::class }
         val boardwalk = player.deeds.keys.first { it::class == Boardwalk::class }
 
         // player builds four houses on Park Place but only three on Boardwalk
-        bank.buildHouse(ParkPlace::class, player)
+        bank.sellHouseToPlayer(ParkPlace::class, player, board)
         (1 .. 3).forEach { _ ->
-            bank.buildHouse(Boardwalk::class, player)
-            bank.buildHouse(ParkPlace::class, player)
+            bank.sellHouseToPlayer(Boardwalk::class, player, board)
+            bank.sellHouseToPlayer(ParkPlace::class, player, board)
         }
 
         // cannot build a hotel on Park Place, even though it has four houses
         // because Boardwalk only has three
-        assertFalse(parkPlace.addingHotelRespectsEvenBuildingRules(player))
-        assertFalse(boardwalk.addingHotelRespectsEvenBuildingRules(player))
+        assertFalse(parkPlace.addingOrRemovingHotelRespectsEvenBuildingRules(player))
+        assertFalse(boardwalk.addingOrRemovingHotelRespectsEvenBuildingRules(player))
 
         // building a house on boardwalk resolves the issue
-        bank.buildHouse(Boardwalk::class, player)
+        bank.sellHouseToPlayer(Boardwalk::class, player, board)
 
-        assertTrue(parkPlace.addingHotelRespectsEvenBuildingRules(player))
-        assertTrue(boardwalk.addingHotelRespectsEvenBuildingRules(player))
-        bank.buildHotel(ParkPlace::class, player)
-        bank.buildHotel(Boardwalk::class, player)
+        assertTrue(parkPlace.addingOrRemovingHotelRespectsEvenBuildingRules(player))
+        assertTrue(boardwalk.addingOrRemovingHotelRespectsEvenBuildingRules(player))
+        bank.sellHotelToPlayer(ParkPlace::class, player, board)
+        bank.sellHotelToPlayer(Boardwalk::class, player, board)
     }
 }
