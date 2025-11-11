@@ -36,6 +36,6 @@ tasks.withType<JavaCompile> {
 }
 
 application {
-    mainClass.set("ca.jonathanfritz.monopoly.Monopoly.kt")
+    mainClass.set("ca.jonathanfritz.monopoly.MonopolyKt")
 }
 
