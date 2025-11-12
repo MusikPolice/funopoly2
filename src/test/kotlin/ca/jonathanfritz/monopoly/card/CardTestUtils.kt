@@ -5,7 +5,10 @@ import ca.jonathanfritz.monopoly.board.Bank
 import ca.jonathanfritz.monopoly.board.Board
 import org.junit.jupiter.api.Assertions
 
-fun assertBankPaysPlayer(card: Card, expectedAmount: Int) {
+fun assertBankPaysPlayer(
+    card: Card,
+    expectedAmount: Int,
+) {
     val player = Player("Big Bird", money = 0)
     val bank = Bank(money = expectedAmount)
     val board = Board(listOf(player), bank)
@@ -14,7 +17,10 @@ fun assertBankPaysPlayer(card: Card, expectedAmount: Int) {
     Assertions.assertEquals(0, bank.money)
 }
 
-fun assertPlayerPaysBank(card: Card, expectedAmount: Int) {
+fun assertPlayerPaysBank(
+    card: Card,
+    expectedAmount: Int,
+) {
     val player = Player("Big Bird", money = expectedAmount)
     val bank = Bank(money = 0)
     val board = Board(listOf(player), bank)

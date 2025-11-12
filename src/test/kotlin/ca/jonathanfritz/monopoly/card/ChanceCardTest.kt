@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package ca.jonathanfritz.monopoly.card
 
 import ca.jonathanfritz.monopoly.*
@@ -12,19 +14,21 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 internal class ChanceCardTest {
-
     @Test
     fun `advance to property test`() {
         val player = Player("Big Bird", 30)
         val bank = Bank()
-        val board = Board(
-            listOf(player),
-
-            // this chance deck is rigged to avoid moving the player
-            chance = Deck(mutableListOf(
-                ChanceCard.PoorTax
-            ))
-        )
+        val board =
+            Board(
+                listOf(player),
+                // this chance deck is rigged to avoid moving the player
+                chance =
+                    Deck(
+                        mutableListOf(
+                            ChanceCard.PoorTax,
+                        ),
+                    ),
+            )
 
         // our player draws a Chance card
         board.advancePlayerToTile(player, Tile.Chance::class)
@@ -55,14 +59,17 @@ internal class ChanceCardTest {
     fun `advance to railroad test`() {
         val player = Player("Grover", 15)
         val bank = Bank()
-        val board = Board(
-            listOf(player),
-
-            // this deck is rigged to avoid moving the player
-            chance = Deck(mutableListOf(
-                ChanceCard.PoorTax
-            ))
-        )
+        val board =
+            Board(
+                listOf(player),
+                // this deck is rigged to avoid moving the player
+                chance =
+                    Deck(
+                        mutableListOf(
+                            ChanceCard.PoorTax,
+                        ),
+                    ),
+            )
 
         // our player draws a Chance card
         board.advancePlayerToTile(player, Tile.Chance::class)
@@ -93,13 +100,17 @@ internal class ChanceCardTest {
     fun `advance to nearest utility while not owned`() {
         val player = Player("Grover", 151)
         val fakeDice = FakeDice(Dice.Roll(6, 1))
-        val board = Board(
-            listOf(player),
-            dice = fakeDice,
-            chance = Deck(mutableListOf(
-                ChanceCard.AdvanceToNearestUtility
-            ))
-        )
+        val board =
+            Board(
+                listOf(player),
+                dice = fakeDice,
+                chance =
+                    Deck(
+                        mutableListOf(
+                            ChanceCard.AdvanceToNearestUtility,
+                        ),
+                    ),
+            )
 
         // on his first turn, Grover will land on Chance and draw the Advance to Nearest Utility Card
         // this will advance him to Electric Company, which he will buy since it is unowned
@@ -115,14 +126,18 @@ internal class ChanceCardTest {
         val cookie = Player("Cookie Monster", 150)
         val bank = Bank()
         val fakeDice = FakeDice(Dice.Roll(6, 1), Dice.Roll(5, 5), Dice.Roll(2, 1))
-        val board = Board(
-            listOf(grover, cookie),
-            bank,
-            dice = fakeDice,
-            chance = Deck(mutableListOf(
-                ChanceCard.AdvanceToNearestUtility
-            ))
-        )
+        val board =
+            Board(
+                listOf(grover, cookie),
+                bank,
+                dice = fakeDice,
+                chance =
+                    Deck(
+                        mutableListOf(
+                            ChanceCard.AdvanceToNearestUtility,
+                        ),
+                    ),
+            )
 
         // Cookie Monster owns Electric Company
         bank.sellDeedToPlayer(Utility.ElectricCompany::class, cookie, board)
@@ -144,13 +159,17 @@ internal class ChanceCardTest {
     fun `advance to nearest railroad while not owned`() {
         val player = Player("Grover", 201)
         val fakeDice = FakeDice(Dice.Roll(6, 1))
-        val board = Board(
-            listOf(player),
-            dice = fakeDice,
-            chance = Deck(mutableListOf(
-                ChanceCard.AdvanceToNearestRailroad
-            ))
-        )
+        val board =
+            Board(
+                listOf(player),
+                dice = fakeDice,
+                chance =
+                    Deck(
+                        mutableListOf(
+                            ChanceCard.AdvanceToNearestRailroad,
+                        ),
+                    ),
+            )
 
         // on his first turn, Grover will land on Chance and draw the Advance to Nearest Railroad Card
         // this will advance him to Pennsylvania Railroad, which he will buy since it is unowned
@@ -166,14 +185,18 @@ internal class ChanceCardTest {
         val cookie = Player("Cookie Monster", 200)
         val fakeDice = FakeDice(Dice.Roll(6, 1), Dice.Roll(2, 1))
         val bank = Bank()
-        val board = Board(
-            listOf(grover, cookie),
-            bank,
-            dice = fakeDice,
-            chance = Deck(mutableListOf(
-                ChanceCard.AdvanceToNearestRailroad
-            ))
-        )
+        val board =
+            Board(
+                listOf(grover, cookie),
+                bank,
+                dice = fakeDice,
+                chance =
+                    Deck(
+                        mutableListOf(
+                            ChanceCard.AdvanceToNearestRailroad,
+                        ),
+                    ),
+            )
 
         // Cookie Monster owns Pennsylvania Railroad
         bank.sellDeedToPlayer(Railroad.PennsylvaniaRailroad::class, cookie, board)
@@ -220,7 +243,7 @@ internal class ChanceCardTest {
         ChanceCard.GoBackThreeSpaces.onDraw(player, bank, board)
         board.assertPlayerOnProperty(
             player,
-            Property.ParkPlace::class
+            Property.ParkPlace::class,
         )
     }
 
@@ -235,7 +258,7 @@ internal class ChanceCardTest {
         bank.sellDeedToPlayer(Property.VermontAvenue::class, player, board)
         bank.sellDeedToPlayer(Property.ConnecticutAvenue::class, player, board)
 
-        (1 .. 4).forEach { _ ->
+        (1..4).forEach { _ ->
             bank.sellHouseToPlayer(Property.OrientalAvenue::class, player, board)
             bank.sellHouseToPlayer(Property.VermontAvenue::class, player, board)
             bank.sellHouseToPlayer(Property.ConnecticutAvenue::class, player, board)

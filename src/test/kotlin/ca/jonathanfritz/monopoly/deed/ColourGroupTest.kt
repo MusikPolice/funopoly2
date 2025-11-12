@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package ca.jonathanfritz.monopoly.deed
 
 import ca.jonathanfritz.monopoly.deed.Railroad.*
@@ -6,12 +8,11 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
 internal class ColourGroupTest {
-    
     @Test
     fun `brown contains expected title deeds`() {
         assertEquals(
             setOf(Property.MediterraneanAvenue::class, Property.BalticAvenue::class),
-            ColourGroup.Brown.titleDeeds().keys
+            ColourGroup.Brown.titleDeeds().keys,
         )
     }
 
@@ -21,9 +22,9 @@ internal class ColourGroupTest {
             setOf(
                 Property.OrientalAvenue::class,
                 Property.VermontAvenue::class,
-                Property.ConnecticutAvenue::class
+                Property.ConnecticutAvenue::class,
             ),
-            ColourGroup.LightBlue.titleDeeds().keys
+            ColourGroup.LightBlue.titleDeeds().keys,
         )
     }
 
@@ -33,9 +34,9 @@ internal class ColourGroupTest {
             setOf(
                 Property.StCharlesPlace::class,
                 Property.StatesAvenue::class,
-                Property.VirginiaAvenue::class
+                Property.VirginiaAvenue::class,
             ),
-            ColourGroup.Pink.titleDeeds().keys
+            ColourGroup.Pink.titleDeeds().keys,
         )
     }
 
@@ -45,9 +46,9 @@ internal class ColourGroupTest {
             setOf(
                 Property.StJamesPlace::class,
                 Property.TennesseeAvenue::class,
-                Property.NewYorkAvenue::class
+                Property.NewYorkAvenue::class,
             ),
-            ColourGroup.Orange.titleDeeds().keys
+            ColourGroup.Orange.titleDeeds().keys,
         )
     }
 
@@ -57,9 +58,9 @@ internal class ColourGroupTest {
             setOf(
                 Property.KentuckyAvenue::class,
                 Property.IndianaAvenue::class,
-                Property.IllinoisAvenue::class
+                Property.IllinoisAvenue::class,
             ),
-            ColourGroup.Red.titleDeeds().keys
+            ColourGroup.Red.titleDeeds().keys,
         )
     }
 
@@ -69,9 +70,9 @@ internal class ColourGroupTest {
             setOf(
                 Property.AtlanticAvenue::class,
                 Property.VentnorAvenue::class,
-                Property.MarvinGardens::class
+                Property.MarvinGardens::class,
             ),
-            ColourGroup.Yellow.titleDeeds().keys
+            ColourGroup.Yellow.titleDeeds().keys,
         )
     }
 
@@ -81,9 +82,9 @@ internal class ColourGroupTest {
             setOf(
                 Property.PacificAvenue::class,
                 Property.NorthCarolinaAvenue::class,
-                Property.PennsylvaniaAvenue::class
+                Property.PennsylvaniaAvenue::class,
             ),
-            ColourGroup.Green.titleDeeds().keys
+            ColourGroup.Green.titleDeeds().keys,
         )
     }
 
@@ -91,7 +92,7 @@ internal class ColourGroupTest {
     fun `dark blue contains expected title deeds`() {
         assertEquals(
             setOf(Property.ParkPlace::class, Property.Boardwalk::class),
-            ColourGroup.DarkBlue.titleDeeds().keys
+            ColourGroup.DarkBlue.titleDeeds().keys,
         )
     }
 
@@ -99,7 +100,7 @@ internal class ColourGroupTest {
     fun `railroads contains expected title deeds`() {
         assertEquals(
             setOf(ReadingRailroad::class, PennsylvaniaRailroad::class, BAndORailroad::class, ShortlineRailroad::class),
-            ColourGroup.Railroads.titleDeeds().keys
+            ColourGroup.Railroads.titleDeeds().keys,
         )
     }
 
@@ -107,7 +108,7 @@ internal class ColourGroupTest {
     fun `utilities contains expected title deeds`() {
         assertEquals(
             setOf(ElectricCompany::class, WaterWorks::class),
-            ColourGroup.Utilities.titleDeeds().keys
+            ColourGroup.Utilities.titleDeeds().keys,
         )
     }
 }

@@ -10,7 +10,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 internal class TileTest {
-
     @Test
     fun `income tax tile charges player upon landing`() {
         val player = Player("Big Bird", 100)
@@ -72,13 +71,15 @@ internal class TileTest {
 
     @Test
     fun `player does not pay rent upon landing on buyable that they own`() {
-        val player = Player(
-            "Ernie",
-            money = 10,
-            deeds = mutableMapOf(
-                Property.BalticAvenue() to Player.Development()
+        val player =
+            Player(
+                "Ernie",
+                money = 10,
+                deeds =
+                    mutableMapOf(
+                        Property.BalticAvenue() to Player.Development(),
+                    ),
             )
-        )
         val bank = Bank()
         val board = Board(listOf(player))
 
@@ -90,12 +91,14 @@ internal class TileTest {
 
     @Test
     fun `player pays rent to owner upon landing on owned buyable`() {
-        val owner = Player(
-            "Bert",
-            deeds = mutableMapOf(
-                Property.BalticAvenue() to Player.Development()
+        val owner =
+            Player(
+                "Bert",
+                deeds =
+                    mutableMapOf(
+                        Property.BalticAvenue() to Player.Development(),
+                    ),
             )
-        )
         val player = Player("Ernie", money = 10)
         val bank = Bank()
         val board = Board(listOf(owner, player))

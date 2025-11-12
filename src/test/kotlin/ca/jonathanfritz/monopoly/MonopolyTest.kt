@@ -1,12 +1,12 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package ca.jonathanfritz.monopoly
 
 import ca.jonathanfritz.monopoly.board.Bank
-import ca.jonathanfritz.monopoly.board.Board
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 internal class MonopolyTest {
-
     @Test
     fun `the bank grants each player $1500 when the board is initialized`() {
         val player = Player("Big Bird")

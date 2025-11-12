@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package ca.jonathanfritz.monopoly.board
 
 import ca.jonathanfritz.monopoly.*
@@ -14,7 +16,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 internal class BoardTest {
-
     @Test
     fun `player who lands on Jail is just visiting`() {
         val player = Player("Abbi", 0)
@@ -42,16 +43,16 @@ internal class BoardTest {
     // TODO: found an edge case where this fails:
     // Round 1:
     //
-    //	Starting Abbi's turn on Go with $500
-    //		Abbi rolled a 2 (doubles)
-    //		Abbi landed on CommunityChest (side 1)
-    //		Abbi drew Go to Jail
-    //		Abbi is In Jail
-    //	Abbi rolled doubles and gets another turn
-    //		Abbi rolled doubles and is released from jail early
-    //		Abbi rolled a 2 (doubles)
-    //		Abbi landed on ElectricCompany. It can be purchased for $150
-    //		Abbi pays $150 to buy ElectricCompany
+    // 	Starting Abbi's turn on Go with $500
+    // 		Abbi rolled a 2 (doubles)
+    // 		Abbi landed on CommunityChest (side 1)
+    // 		Abbi drew Go to Jail
+    // 		Abbi is In Jail
+    // 	Abbi rolled doubles and gets another turn
+    // 		Abbi rolled doubles and is released from jail early
+    // 		Abbi rolled a 2 (doubles)
+    // 		Abbi landed on ElectricCompany. It can be purchased for $150
+    // 		Abbi pays $150 to buy ElectricCompany
     @Test
     fun `three consecutive doubles sends player to jail`() {
         val player = Player("Abbi", 500)
@@ -122,7 +123,7 @@ internal class BoardTest {
         val startingPlayerBalance = config.getOutOfJailEarlyFeeAmount * 2
         val player = Player("Gordon", money = startingPlayerBalance)
         val bank = Bank(money = 0)
-        val fakeDice = FakeDice(Roll(1, 1), Roll(2,1))
+        val fakeDice = FakeDice(Roll(1, 1), Roll(2, 1))
         val board = Board(listOf(player), bank = bank, dice = fakeDice)
         board.goToJail(player)
 
@@ -146,7 +147,7 @@ internal class BoardTest {
         val player = Player("Bert", money = startingPlayerBalance)
         val bank = Bank()
         val fakeDice = FakeDice(Roll(1, 1))
-        val board = Board(listOf(player), dice = fakeDice,)
+        val board = Board(listOf(player), dice = fakeDice)
         val startingBankBalance = bank.money
         board.goToJail(player)
 
@@ -166,16 +167,17 @@ internal class BoardTest {
     }
 
     @Test
+    @Suppress("ktlint:standard:max-line-length")
     fun `a player who is in jail for three turns without rolling doubles, playing a card, or paying a fee is charged the fee and proceeds with their turn as expected`() {
         val config = Config()
         val player = NotUsingGetOutOfJailFreeCardPlayer("Ernie", 50)
         val bank = Bank(money = 0)
-        val fakeDice = FakeDice(Roll(2,1 ), Roll(2,1 ), Roll(2,1 ))
+        val fakeDice = FakeDice(Roll(2, 1), Roll(2, 1), Roll(2, 1))
         val board = Board(listOf(player), bank = bank, dice = fakeDice)
         board.goToJail(player)
 
         // player takes two turns without leaving jail
-        (1 .. 2).forEach {
+        (1..2).forEach {
             board.executeRound(1)
             assertTrue(player.isInJail)
             assertEquals(Tile.Jail::class, board.playerTile(player)::class)
@@ -191,16 +193,20 @@ internal class BoardTest {
         assertEquals(config.getOutOfJailEarlyFeeAmount, bank.money)
     }
 
-    private class NotUsingGetOutOfJailFreeCardPlayer(name: String, money: Int): Player(name, money) {
+    private class NotUsingGetOutOfJailFreeCardPlayer(
+        name: String,
+        money: Int,
+    ) : Player(name, money) {
         override fun isPayingGetOutOfJailEarlyFee(amount: Int) = false
     }
 
     @Test
     fun `a player who passes go is awarded $200 salary`() {
-        val player = Player(
-            "Grover",
-            deeds = mutableMapOf(Property.BalticAvenue() to Player.Development())
-        )
+        val player =
+            Player(
+                "Grover",
+                deeds = mutableMapOf(Property.BalticAvenue() to Player.Development()),
+            )
         val fakeDice = FakeDice(Roll(5, 1))
         val bank = Bank(money = 200)
         val board = Board(listOf(player), bank = bank, dice = fakeDice)
@@ -289,14 +295,17 @@ internal class BoardTest {
     @Test
     fun `advance player to next chance test`() {
         val player = Player("Bert")
-        val board = Board(
-            listOf(player),
-
-            // this board has a rigged chance deck that doesn't affect the player's board position when drawn
-            chance = Deck(mutableListOf(
-                ChanceCard.BankPaysYouDividend,
-            ))
-        )
+        val board =
+            Board(
+                listOf(player),
+                // this board has a rigged chance deck that doesn't affect the player's board position when drawn
+                chance =
+                    Deck(
+                        mutableListOf(
+                            ChanceCard.BankPaysYouDividend,
+                        ),
+                    ),
+            )
 
         // the player starts on go, so moving the player to the next chance leaves them on the first side
         board.advancePlayerToTile(player, Tile.Chance::class)
@@ -324,14 +333,17 @@ internal class BoardTest {
     @Test
     fun `advance player to next community chest test`() {
         val player = Player("Ernie")
-        val board = Board(
-            listOf(player),
-
-            // this board has a rigged community chest deck that doesn't affect the player's board position when drawn
-            communityChest = Deck(mutableListOf(
-                CommunityChestCard.Inheritance
-            ))
-        )
+        val board =
+            Board(
+                listOf(player),
+                // this board has a rigged community chest deck that doesn't affect the player's board position when drawn
+                communityChest =
+                    Deck(
+                        mutableListOf(
+                            CommunityChestCard.Inheritance,
+                        ),
+                    ),
+            )
 
         // the player starts on go, so moving the player to the next community chest leaves them on the first side
         board.advancePlayerToTile(player, Tile.CommunityChest::class)
@@ -397,13 +409,15 @@ internal class BoardTest {
     @Test
     fun `go back three spaces test`() {
         // this player already owns Mediterranean Avenue, so they won't attempt to buy it again
-        val player = Player(
-            "Oscar the Grouch",
-            101,
-            deeds = mutableMapOf(
-                Property.MediterraneanAvenue() to Player.Development()
+        val player =
+            Player(
+                "Oscar the Grouch",
+                101,
+                deeds =
+                    mutableMapOf(
+                        Property.MediterraneanAvenue() to Player.Development(),
+                    ),
             )
-        )
         val board = Board(listOf(player))
 
         // this player starts on Mediterranean Avenue
@@ -422,16 +436,19 @@ internal class BoardTest {
     @Test
     fun `landing on two or more tiles within the space of a single turn applies the onLanding action for each`() {
         val player = Player("Grover", 160)
-        val fakeDice = FakeDice(Roll(6,1))
-        val board = Board(
-            listOf(player),
-            dice = fakeDice,
-
-            // this rigged Chance deck will always send the player to either Electric Company or Water Works
-            chance = Deck(mutableListOf(
-                ChanceCard.AdvanceToNearestUtility
-            ))
-        )
+        val fakeDice = FakeDice(Roll(6, 1))
+        val board =
+            Board(
+                listOf(player),
+                dice = fakeDice,
+                // this rigged Chance deck will always send the player to either Electric Company or Water Works
+                chance =
+                    Deck(
+                        mutableListOf(
+                            ChanceCard.AdvanceToNearestUtility,
+                        ),
+                    ),
+            )
 
         // the player rolls a seven, lands on Chance (side 1), then draws a card that sends them to Electric Company
         board.executeRound(1)
@@ -443,14 +460,16 @@ internal class BoardTest {
 
     @Test
     fun `a player that completes a monopoly can develop the cheapest property in the group`() {
-        val player = Player(
-            "Big Bird",
-            money = 151,
-            deeds = mutableMapOf(
-                Property.VermontAvenue() to Player.Development(),
-                Property.ConnecticutAvenue() to Player.Development()
+        val player =
+            Player(
+                "Big Bird",
+                money = 151,
+                deeds =
+                    mutableMapOf(
+                        Property.VermontAvenue() to Player.Development(),
+                        Property.ConnecticutAvenue() to Player.Development(),
+                    ),
             )
-        )
         val fakeDice = FakeDice(Roll(5, 1))
         val board = Board(listOf(player), dice = fakeDice)
 

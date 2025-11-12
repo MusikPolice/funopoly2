@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package ca.jonathanfritz.monopoly.deed
 
 import ca.jonathanfritz.monopoly.FakeDice
@@ -10,15 +12,14 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
 internal class UtilityTest {
-
     @Test
     fun `values contains expected utilities`() {
         assertEquals(
             setOf(
                 ElectricCompany::class,
-                WaterWorks::class
+                WaterWorks::class,
             ),
-            Utility.values.keys
+            Utility.values.keys,
         )
     }
 
@@ -39,26 +40,30 @@ internal class UtilityTest {
 
     @Test
     fun `rent is $0 if railroad is mortgaged`() {
-        val owner = Player(
-            "Big Bird",
-            deeds = mutableMapOf(
-                ElectricCompany() to Player.Development(isMortgaged = true),
-                WaterWorks() to Player.Development(isMortgaged = true)
+        val owner =
+            Player(
+                "Big Bird",
+                deeds =
+                    mutableMapOf(
+                        ElectricCompany() to Player.Development(isMortgaged = true),
+                        WaterWorks() to Player.Development(isMortgaged = true),
+                    ),
             )
-        )
         assertEquals(0, WaterWorks().calculateRent(owner, Board(listOf(owner))))
         assertEquals(0, ElectricCompany().calculateRent(owner, Board(listOf(owner))))
     }
 
     @Test
     fun `rent for unmortgaged utilities ignores ownership of another utility that is mortgaged`() {
-        val owner = Player(
-            "Big Bird",
-            deeds = mutableMapOf(
-                ElectricCompany() to Player.Development(isMortgaged = true),
-                WaterWorks() to Player.Development()
+        val owner =
+            Player(
+                "Big Bird",
+                deeds =
+                    mutableMapOf(
+                        ElectricCompany() to Player.Development(isMortgaged = true),
+                        WaterWorks() to Player.Development(),
+                    ),
             )
-        )
         val fakeDice = FakeDice(Dice.Roll(3, 1))
         val board = Board(listOf(owner), dice = fakeDice)
 
@@ -72,10 +77,11 @@ internal class UtilityTest {
 
     @Test
     fun `rent is 4x dice roll if one utility is owned`() {
-        val owner = Player(
-            "Big Bird",
-            deeds = mutableMapOf(ElectricCompany() to Player.Development())
-        )
+        val owner =
+            Player(
+                "Big Bird",
+                deeds = mutableMapOf(ElectricCompany() to Player.Development()),
+            )
         val fakeDice = FakeDice(Dice.Roll(3, 1))
         val board = Board(listOf(owner), dice = fakeDice)
 
@@ -88,13 +94,15 @@ internal class UtilityTest {
 
     @Test
     fun `rent is 10x dice roll if both utilities are owned`() {
-        val owner = Player(
-            "Oscar",
-            deeds = mutableMapOf(
-                ElectricCompany() to Player.Development(),
-                WaterWorks() to Player.Development()
+        val owner =
+            Player(
+                "Oscar",
+                deeds =
+                    mutableMapOf(
+                        ElectricCompany() to Player.Development(),
+                        WaterWorks() to Player.Development(),
+                    ),
             )
-        )
 
         val fakeDice = FakeDice(Dice.Roll(3, 1))
         val board = Board(listOf(owner), dice = fakeDice)

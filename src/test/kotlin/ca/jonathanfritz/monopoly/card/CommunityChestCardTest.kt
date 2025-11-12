@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package ca.jonathanfritz.monopoly.card
 
 import ca.jonathanfritz.monopoly.Player
@@ -8,7 +10,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 internal class CommunityChestCardTest {
-
     @Test
     fun `bank error in your favour test`() {
         assertBankPaysPlayer(CommunityChestCard.BankErrorInYourFavour, 200)
@@ -106,7 +107,7 @@ internal class CommunityChestCardTest {
         bank.sellDeedToPlayer(Property.VermontAvenue::class, player, board)
         bank.sellDeedToPlayer(Property.ConnecticutAvenue::class, player, board)
 
-        (1 .. 4).forEach { _ ->
+        (1..4).forEach { _ ->
             bank.sellHouseToPlayer(Property.OrientalAvenue::class, player, board)
             bank.sellHouseToPlayer(Property.VermontAvenue::class, player, board)
             bank.sellHouseToPlayer(Property.ConnecticutAvenue::class, player, board)

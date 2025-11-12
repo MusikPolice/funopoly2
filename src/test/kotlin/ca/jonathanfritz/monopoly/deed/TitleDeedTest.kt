@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:no-wildcard-imports")
+
 package ca.jonathanfritz.monopoly.deed
 
 import ca.jonathanfritz.monopoly.Player
@@ -13,7 +15,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 internal class TitleDeedTest {
-
     @Test
     fun `values contains all properties, railroads, and utilities`() {
         kotlin.test.assertEquals(
@@ -45,9 +46,9 @@ internal class TitleDeedTest {
                 BAndORailroad::class,
                 ShortlineRailroad::class,
                 ElectricCompany::class,
-                WaterWorks::class
+                WaterWorks::class,
             ),
-            TitleDeed.values.keys
+            TitleDeed.values.keys,
         )
     }
 
@@ -120,7 +121,7 @@ internal class TitleDeedTest {
 
         // player builds four houses on Park Place but only three on Boardwalk
         bank.sellHouseToPlayer(ParkPlace::class, player, board)
-        (1 .. 3).forEach { _ ->
+        (1..3).forEach { _ ->
             bank.sellHouseToPlayer(Boardwalk::class, player, board)
             bank.sellHouseToPlayer(ParkPlace::class, player, board)
         }

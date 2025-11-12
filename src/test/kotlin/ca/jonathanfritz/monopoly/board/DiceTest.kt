@@ -8,7 +8,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 internal class DiceTest {
-
     @RepeatedTest(100)
     fun rollTest() {
         val dice = Dice()
@@ -42,28 +41,29 @@ internal class DiceTest {
     @Test
     fun deterministicRollTest() {
         val seed = 11
-        val expected = listOf(
-            Dice.Roll(2, 2),
-            Dice.Roll(4, 4),
-            Dice.Roll(5, 1),
-            Dice.Roll(2, 2),
-            Dice.Roll(3, 1),
-            Dice.Roll(1, 4),
-            Dice.Roll(5, 4),
-            Dice.Roll(2, 4),
-            Dice.Roll(5, 1),
-            Dice.Roll(3, 3),
-            Dice.Roll(1, 1)
-        )
+        val expected =
+            listOf(
+                Dice.Roll(2, 2),
+                Dice.Roll(4, 4),
+                Dice.Roll(5, 1),
+                Dice.Roll(2, 2),
+                Dice.Roll(3, 1),
+                Dice.Roll(1, 4),
+                Dice.Roll(5, 4),
+                Dice.Roll(2, 4),
+                Dice.Roll(5, 1),
+                Dice.Roll(3, 3),
+                Dice.Roll(1, 1),
+            )
 
         // a pair of dice with a known seed will always produce the same sequence of rolls
         val dice = Dice(Random(seed))
-        val actual = (0 .. 10).map { dice.roll() }
+        val actual = (0..10).map { dice.roll() }
         assertEquals(expected, actual)
 
         // even if we create another instance with that same seed
         val otherDice = Dice(Random(seed))
-        val otherActual = (0 .. 10).map { otherDice.roll() }
+        val otherActual = (0..10).map { otherDice.roll() }
         assertEquals(expected, otherActual)
     }
 }
