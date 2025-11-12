@@ -5,34 +5,44 @@ import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
 import kotlin.reflect.KClass
 
-sealed class Railroad(): TitleDeed(ColourGroup.Railroads, 200, 100) {
+sealed class Railroad : TitleDeed(ColourGroup.Railroads, 200, 100) {
     // https://monopoly.fandom.com/wiki/List_of_Monopoly_Properties
     class ReadingRailroad : Railroad()
+
     class PennsylvaniaRailroad : Railroad()
+
     class BAndORailroad : Railroad()
+
     class ShortlineRailroad : Railroad()
 
     override val isBuildable: Boolean = false
 
     companion object {
-        val values: Map<KClass<out Railroad>, Railroad> = Railroad::class.sealedSubclasses.associateWith {
-            it.constructors.first().call()
-        }
-        fun <R: Railroad> of(kClass: KClass<R>): Railroad = values.getValue(kClass)
+        val values: Map<KClass<out Railroad>, Railroad> =
+            Railroad::class.sealedSubclasses.associateWith {
+                it.constructors.first().call()
+            }
+
+        fun <R : Railroad> of(kClass: KClass<R>): Railroad = values.getValue(kClass)
     }
 
     // rent is based on number of unmortgaged railroads owned - $25 if one, $50 if 2, $100 if three, $200 if four
-    override fun calculateRent(owner: Player, board: Board): Int {
+    override fun calculateRent(
+        owner: Player,
+        board: Board,
+    ): Int {
         if (owner.getDevelopment(this::class).isMortgaged) return 0
 
         // mortgaged railroads are not included in the count
-        val numUnmortgagedRailroads = owner.deeds.filter {
-            it.key is Railroad
-        }.filterNot {
-            it.value.isMortgaged
-        }.count()
+        val numUnmortgagedRailroads =
+            owner.deeds
+                .filter {
+                    it.key is Railroad
+                }.filterNot {
+                    it.value.isMortgaged
+                }.count()
 
-        return when(numUnmortgagedRailroads) {
+        return when (numUnmortgagedRailroads) {
             1 -> 25
             2 -> 50
             3 -> 100

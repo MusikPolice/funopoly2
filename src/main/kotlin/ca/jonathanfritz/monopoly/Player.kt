@@ -247,8 +247,6 @@ open class Player(
 
         // if all else fails, this player is bankrupt
 
-        // TODO: the target player and/or bank needs to get all of our assets
-
         println($$"\t\t$$name owes $$$requiredAmount but has liquidated all assets and only has $$$money remaining")
         throw BankruptcyException($$"$$name has insufficient funds ($$$money < $$$requiredAmount)")
     }

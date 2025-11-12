@@ -7,40 +7,44 @@ import kotlin.reflect.KClass
 sealed class TitleDeed(
     val colourGroup: ColourGroup,
     val price: Int,
-    val mortgageValue: Int
+    val mortgageValue: Int,
 ) {
     companion object {
         // lazy modifier breaks a circular initialization dependency between TitleDeed and its child classes
         val values: Map<KClass<out TitleDeed>, TitleDeed> by lazy {
             Property.values + Railroad.values + Utility.values
         }
-        fun <T : TitleDeed> of(kClass: KClass<T>): TitleDeed = values.getValue(kClass)
 
+        fun <T : TitleDeed> of(kClass: KClass<T>): TitleDeed = values.getValue(kClass)
     }
 
     // true if a player can build houses on the corresponding Tile
     abstract val isBuildable: Boolean
 
-    abstract fun calculateRent(owner: Player, board: Board): Int
+    abstract fun calculateRent(
+        owner: Player,
+        board: Board,
+    ): Int
 
     // houses must be built evenly, leading to two legal cases where a house can be built:
     //  1. all properties in the group have the same number of houses; or
     //  2. the target property has one fewer house than one or both of the other properties in the group, and an
     //      equal number of houses to any remaining properties in the group
     // TODO: should this live in Property? Can't build on Utilities or Railroads
-    fun addingHouseRespectsEvenBuildingRules(player: Player): Boolean {
-        return evaluateEvenBuildingRules(player) { houseCounts, minHouses, _ ->
+    fun addingHouseRespectsEvenBuildingRules(player: Player): Boolean =
+        evaluateEvenBuildingRules(player) { houseCounts, minHouses, _ ->
             houseCounts[minHouses]?.contains(this::class) == true
         }
-    }
 
-    fun removingHouseRespectsEvenBuildingRules(player: Player): Boolean {
-        return evaluateEvenBuildingRules(player) { houseCounts, _, maxHouses ->
+    fun removingHouseRespectsEvenBuildingRules(player: Player): Boolean =
+        evaluateEvenBuildingRules(player) { houseCounts, _, maxHouses ->
             houseCounts[maxHouses]?.contains(this::class) == true
         }
-    }
 
-    private fun evaluateEvenBuildingRules(player: Player, groupEval: (Map<Int, List<KClass<out TitleDeed>>>, Int, Int) -> Boolean): Boolean {
+    private fun evaluateEvenBuildingRules(
+        player: Player,
+        groupEval: (Map<Int, List<KClass<out TitleDeed>>>, Int, Int) -> Boolean,
+    ): Boolean {
         val houseCounts = player.countHouses()
         val allDeedsHaveSameHouseCount = houseCounts.keys.size == 1
         val twoHouseCountGroups = houseCounts.keys.size == 2
@@ -48,11 +52,12 @@ sealed class TitleDeed(
         val maxHouses = houseCounts.keys.max()
         val minHousesIsOneLessThanMaxHouses = minHouses == maxHouses - 1
         return allDeedsHaveSameHouseCount ||
-                (twoHouseCountGroups && minHousesIsOneLessThanMaxHouses && groupEval.invoke(houseCounts, minHouses, maxHouses))
+            (twoHouseCountGroups && minHousesIsOneLessThanMaxHouses && groupEval.invoke(houseCounts, minHouses, maxHouses))
     }
 
     private fun Player.countHouses() =
-        deeds.filter { deedDevelopment -> deedDevelopment.key.colourGroup == colourGroup }
+        deeds
+            .filter { deedDevelopment -> deedDevelopment.key.colourGroup == colourGroup }
             .map { deedDevelopment -> deedDevelopment.key::class to deedDevelopment.value.numHouses }
             .groupBy { deedHouseCount -> deedHouseCount.second }
             .map { it.key to it.value.map { deedHouseCount -> deedHouseCount.first } }
@@ -61,15 +66,13 @@ sealed class TitleDeed(
     // hotels must be built evenly
     // all properties in the monopoly group must already have either four houses or a hotel
     // TODO: should this live in Property? Can't build on Utilities or Railroads
-    fun addingOrRemovingHotelRespectsEvenBuildingRules(player: Player): Boolean {
-        return player.deeds
+    fun addingOrRemovingHotelRespectsEvenBuildingRules(player: Player): Boolean =
+        player.deeds
             .filter { deedDevelopment ->
                 deedDevelopment.key.colourGroup == colourGroup
             }.map { deedDevelopment ->
                 deedDevelopment.value
-            }
-            .all { development ->
+            }.all { development ->
                 development.numHouses == 4 || development.hasHotel
             }
-    }
 }

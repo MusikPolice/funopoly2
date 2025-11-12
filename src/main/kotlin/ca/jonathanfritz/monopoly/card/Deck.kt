@@ -4,9 +4,9 @@ import kotlin.random.Random
 
 // Represents a deck of cards that can be drawn from
 // The deck will be shuffled upon initialization and re-shuffled once drawn down
-class Deck<T : Card> (
+class Deck<T : Card>(
     private var cards: MutableList<T>,
-    private val rng: Random = Random.Default
+    private val rng: Random = Random.Default,
 ) {
     // first draw will shuffle the deck
     private var offset = cards.size
