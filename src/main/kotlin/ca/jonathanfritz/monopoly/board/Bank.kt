@@ -76,6 +76,25 @@ class Bank(
         player.deeds.getValue(deed).isMortgaged = true
     }
 
+    fun unmortgageDeed(
+        deedClass: KClass<out TitleDeed>,
+        player: Player,
+        board: Board,
+    ) {
+        val deed =
+            player.deeds.keys.firstOrNull { it::class == deedClass }
+                ?: throw PropertyOwnershipException("${player.name} does not own ${deedClass.simpleName}")
+
+        val development = player.getDevelopment(deedClass)
+        if (!development.isMortgaged) {
+            throw PropertyDevelopmentException("${deedClass.simpleName} is not mortgaged")
+        }
+
+        val unmortgageCost = ceil(deed.mortgageValue * 1.1).toInt()
+        charge(unmortgageCost, player, board, "to unmortgage ${deedClass.simpleName}")
+        development.isMortgaged = false
+    }
+
     fun sellDeedToPlayer(
         deedClass: KClass<out TitleDeed>,
         player: Player,

@@ -1,7 +1,7 @@
 # Funopoly2 Technical Analysis
 
 **Version:** 1.0-SNAPSHOT  
-**Last Updated:** December 1, 2025  
+**Last Updated:** December 1, 2025 (Post-Bankruptcy Implementation)  
 **Primary Language:** Kotlin 2.2.20  
 **Target JVM:** 17
 
@@ -14,6 +14,7 @@ Build a **Monte Carlo simulation** that evaluates the relative "fun" level of di
 
 ### Current Phase
 Implementing a **correct and fully tested** base game that adheres to official Monopoly rules as published in 2021 editions.
+**Recent Completion (Dec 2025):** Player-to-player bankruptcy and property unmortgaging fully implemented.
 
 ### Future Vision
 - Simulate thousands of games with varying rule configurations
@@ -119,12 +120,33 @@ ca.jonathanfritz.monopoly/
 **`developProperties(bank: Bank, board: Board)`**
 - **Critical Algorithm** - See Section 4.1
 
-**`liquidateAssets(requiredAmount: Int, bank: Bank, board: Board)`**
+**liquidateAssets(requiredAmount: Int, bank: Bank, board: Board)**
 - **Critical Algorithm** - See Section 4.2
 
-**`declareBankruptcy()`**
-- Two variants: bankruptcy to bank vs. bankruptcy to player
-- Transfers all assets, clears deeds, sets `isBankrupt = true`
+**shouldUnmortgageProperty(deed: TitleDeed, mortgageValue: Int): Boolean**
+- Strategy method for deciding whether to unmortgage properties
+- Default: unmortgage if `money >= mortgageValue * 2.2`
+- Overridable for custom AI strategies
+
+**unmortgageProperties(bank: Bank, board: Board)**
+- Called at end of turn after development
+- Unmortgages properties approved by strategy
+- Pays 110% of mortgage value via bank.unmortgageDeed()
+
+**countDevelopments(): Pair<Int, Int>**
+- Returns `(totalHouses, totalHotels)` across all owned properties
+
+**declareBankruptcy(bank: Bank, board: Board)**
+- Bankruptcy to bank: transfers cash, returns GOOJF cards, transfers mortgaged deeds
+- Validates full liquidation before bankruptcy
+
+**declareBankruptcy(creditor: Player, bank: Bank, board: Board)**
+- **FULLY IMPLEMENTED** - Player-to-player bankruptcy
+- Transfers: cash, GOOJF cards, all deeds to creditor
+- Pre-calculates fees: 10% to assume mortgage OR 110% to unmortgage
+- Liquidates creditor assets if needed for fees
+- Handles cascading bankruptcy (both bankrupt to bank if creditor can't afford)
+- Validates no houses/hotels remain (throws `PropertyDevelopmentException`)
 
 ### 3.3 Board
 **Location:** `board/Board.kt`
@@ -149,11 +171,12 @@ Go -> MediterraneanAvenue -> CommunityChest -> BalticAvenue -> IncomeTax -> ...
 
 **Key Methods:**
 
-**`executeRound(round: Int)`**
+**executeRound(round: Int)**
 - Iterates through non-bankrupt players
 - Handles jail escape attempts
 - Manages dice rolling (including doubles)
-- Calls `player.developProperties()` after each roll
+- Calls player.developProperties() after each roll
+- Calls player.unmortgageProperties() after development
 - Enforces three-consecutive-doubles rule
 
 **`advancePlayerBy(player, offset, collectSalary, rentOverride)`**
@@ -208,6 +231,12 @@ Go -> MediterraneanAvenue -> CommunityChest -> BalticAvenue -> IncomeTax -> ...
 - Pays player the `mortgageValue`
 - Sets `Development.isMortgaged = true`
 - Cannot mortgage developed properties
+
+**unmortgageDeed(deedClass, player, board)**
+- Charges player `ceil(mortgageValue * 1.1)` (110%) to unmortgage
+- Validates: player owns property and property is mortgaged
+- May trigger player.liquidateAssets()
+- Sets `Development.isMortgaged = false`
 
 ### 3.5 Title Deeds
 **Location:** `deed/`
@@ -450,29 +479,6 @@ else houseRents[numHouses]
 
 ## 5. Testing Strategy
 
-### Test Coverage
-
-**Main Classes:**
-- `MonopolyTest.kt` - Game initialization
-- `PlayerTest.kt` - 388 lines, comprehensive player behavior
-- `BoardTest.kt` - 486 lines, round execution, movement, jail
-- `BankTest.kt` - 431 lines, transactions, property sales
-- `DiceTest.kt` - Basic dice rolling
-- `TileTest.kt` - Tile landing behavior
-
-**Deeds:**
-- `PropertyTest.kt` - Rent calculations, development
-- `RailroadTest.kt` - Rent scaling
-- `UtilityTest.kt` - Dice-based rent
-- `TitleDeedTest.kt` - Even building rules
-- `ColourGroupTest.kt` - Property grouping
-
-**Cards:**
-- `CardTest.kt` - Base card behavior
-- `ChanceCardTest.kt` - 11,713 bytes, all Chance card effects
-- `CommunityChestCardTest.kt` - Community Chest cards
-- `DeckTest.kt` - Deck shuffling and drawing
-
 ### Testing Utilities
 **Location:** `TestUtils.kt`
 
@@ -506,11 +512,6 @@ class FakeDice(private vararg val rolls: Roll) : Dice() {
 
 ### High Priority (Core Game)
 
-**Asset Transfer on Bankruptcy (`Player.kt:8`, `:287-289`)**
-- When player bankrupts to another player, assets should transfer
-- Receiving player must pay 10% fee on mortgaged properties OR unmortgage immediately
-- Currently not implemented
-
 **Property Auctions (Multiple locations)**
 - `Monopoly.kt:11` - "property auctions on decline to buy?"
 - `Tile.kt:69` - When player declines purchase
@@ -537,11 +538,6 @@ class FakeDice(private vararg val rolls: Roll) : Dice() {
 - Not implemented
 - Critical for strategic gameplay
 - Would enable monopoly formation through negotiation
-
-**Unmortgaging Properties (`Board.kt:172`)**
-- Players cannot currently unmortgage properties
-- Should be possible on player's turn after rolling
-- Costs `mortgageValue * 1.1`
 
 ### Medium Priority (Rules Accuracy)
 
@@ -598,22 +594,6 @@ class FakeDice(private vararg val rolls: Roll) : Dice() {
 - Bank must have 4 houses available to buy hotel from player
 - Creates interesting strategic scarcity
 - Correctly implemented in `Bank.buyHotelFromPlayer()`
-
-### 7.2 Incomplete Implementations
-
-**Player-to-Player Bankruptcy**
-- `Player.declareBankruptcy(player: Player)` exists but doesn't transfer assets
-- Only prints bankruptcy message
-- Full implementation requires:
-  - Transfer all cash
-  - Transfer all properties (mortgaged and unmortgaged)
-  - Receiving player pays 10% fee on mortgages
-  - Get Out of Jail Free cards return to decks
-
-**Mortgaged Property Management**
-- Players can mortgage but not unmortgage
-- No fee calculation for assuming mortgages in bankruptcy
-- Missing strategic depth
 
 ---
 
@@ -846,43 +826,3 @@ Would enable better compile-time type checking.
 - Bank money amounts: https://www.monopolyland.com/how-much-money-in-monopoly-set/
 
 ---
-
-## Appendix: File Sizes
-
-**Source Files (by size):**
-- `Player.kt` - 14,663 bytes (329 lines)
-- `Board.kt` - 12,944 bytes (297 lines)
-- `Bank.kt` - 12,594 bytes (292 lines)
-- `ChanceCard.kt` - 6,519 bytes (162 lines)
-- `Tile.kt` - 6,361 bytes (178 lines)
-- `Property.kt` - 3,845 bytes (96 lines)
-- `CommunityChestCard.kt` - 3,586 bytes (99 lines)
-- `TitleDeed.kt` - 3,500 bytes (79 lines)
-- `Card.kt` - 1,896 bytes (69 lines)
-- `Monopoly.kt` - 1,865 bytes (61 lines)
-- `Railroad.kt` - 1,760 bytes (54 lines)
-- `Utility.kt` - 1,297 bytes (40 lines)
-- `Deck.kt` - 911 bytes (30 lines)
-- `Dice.kt` - 898 bytes (33 lines)
-- `ColourGroup.kt` - 649 bytes (24 lines)
-- `Config.kt` - 453 bytes (9 lines)
-
-**Test Files (by size):**
-- `BoardTest.kt` - 21,228 bytes (486 lines)
-- `BankTest.kt` - 17,461 bytes (431 lines)
-- `PlayerTest.kt` - 15,251 bytes (388 lines)
-- `ChanceCardTest.kt` - 11,713 bytes
-- `PropertyTest.kt` - 6,150 bytes
-- `TitleDeedTest.kt` - 5,954 bytes
-- `RailroadTest.kt` - 4,595 bytes
-- `CommunityChestCardTest.kt` - 4,332 bytes
-- `TileTest.kt` - 4,259 bytes
-- `UtilityTest.kt` - 3,918 bytes
-- `ColourGroupTest.kt` - 3,329 bytes
-- `DeckTest.kt` - 3,213 bytes
-- `CardTest.kt` - 2,319 bytes
-- `DiceTest.kt` - 2,132 bytes
-- `TestUtils.kt` - 2,101 bytes
-- `MonopolyTest.kt` - 1,002 bytes
-
-**Total:** ~174KB of source + tests

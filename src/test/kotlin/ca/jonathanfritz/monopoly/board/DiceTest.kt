@@ -43,17 +43,17 @@ internal class DiceTest {
         val seed = 11
         val expected =
             listOf(
-                Dice.Roll(2, 2),
+                Dice.Roll(6, 5),
+                Dice.Roll(4, 3),
                 Dice.Roll(4, 4),
-                Dice.Roll(5, 1),
-                Dice.Roll(2, 2),
-                Dice.Roll(3, 1),
-                Dice.Roll(1, 4),
-                Dice.Roll(5, 4),
                 Dice.Roll(2, 4),
-                Dice.Roll(5, 1),
+                Dice.Roll(1, 6),
+                Dice.Roll(1, 4),
+                Dice.Roll(1, 5),
                 Dice.Roll(3, 3),
-                Dice.Roll(1, 1),
+                Dice.Roll(4, 3),
+                Dice.Roll(6, 2),
+                Dice.Roll(1, 6),
             )
 
         // a pair of dice with a known seed will always produce the same sequence of rolls

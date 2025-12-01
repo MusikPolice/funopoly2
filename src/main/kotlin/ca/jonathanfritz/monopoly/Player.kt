@@ -127,7 +127,7 @@ open class Player(
             try {
                 liquidateAssets(amount, bank, board)
             } catch (_: BankruptcyException) {
-                declareBankruptcy(other)
+                declareBankruptcy(other, bank, board)
                 return
             }
         }
@@ -140,6 +140,13 @@ open class Player(
     // for now, every player buys up every property they can
     // TODO: in the future, consider the amount of money on hand, maybe liquidate to raise money to complete a monopoly, etc
     fun isBuying(deed: TitleDeed): Boolean = money > deed.price
+
+    // strategy for deciding whether to unmortgage a property when receiving it from a bankrupt player
+    // only unmortgage if we have comfortable cash reserves (2.2x the cost)
+    open fun shouldUnmortgageProperty(
+        deed: TitleDeed,
+        mortgageValue: Int,
+    ): Boolean = money >= mortgageValue * 2.2
 
     fun developProperties(
         bank: Bank,
@@ -184,6 +191,20 @@ open class Player(
                     4 -> bank.sellHotelToPlayer(property::class, this, board)
                     else -> bank.sellHouseToPlayer(property::class, this, board)
                 }
+            }
+    }
+
+    fun unmortgageProperties(
+        bank: Bank,
+        board: Board,
+    ) {
+        deeds
+            .filter { (_, development) -> development.isMortgaged }
+            .filter { (deed, _) ->
+                // only unmortgage if strategy says we should
+                shouldUnmortgageProperty(deed, deed.mortgageValue)
+            }.forEach { (deed, _) ->
+                bank.unmortgageDeed(deed::class, this, board)
             }
     }
 
@@ -279,14 +300,82 @@ open class Player(
         println("\t\t$name is bankrupt!")
     }
 
-    private fun declareBankruptcy(player: Player) {
+    private fun declareBankruptcy(
+        creditor: Player,
+        bank: Bank,
+        board: Board,
+    ) {
         if (!hasFullyLiquidatedAssets()) {
             throw IllegalStateException("$name has declared bankruptcy without first liquidating their assets")
         }
 
-        // TODO: transfer this player's assets to other; other must immediately pay a penalty on mortgaged properties
-        //  ideally, other player immediately unmortgages all newly acquired properties, but can elect to pay a 10% fee
-        //  to the bank to assume the mortgage
+        // 1. Transfer cash
+        creditor.money += this.money
+        this.money = 0
+
+        // 2. Transfer Get Out of Jail Free cards
+        while (hasGetOutOfJailFreeCard()) {
+            creditor.grantGetOutOfJailFreeCard(this.getOutOfJailFreeCards.removeAt(0))
+        }
+
+        // 3. Pre-calculate total mortgage fees creditor will owe
+        val totalMortgageFees =
+            this.deeds.values
+                .filter { it.isMortgaged }
+                .sumOf { development ->
+                    val deed = this.deeds.keys.first { this.deeds[it] == development }
+                    if (creditor.shouldUnmortgageProperty(deed, deed.mortgageValue)) {
+                        ceil(deed.mortgageValue * 1.1).toInt() // Unmortgage cost
+                    } else {
+                        ceil(deed.mortgageValue * 0.1).toInt() // Assumption fee
+                    }
+                }
+
+        // 4. Ensure creditor can pay fees (liquidate if necessary)
+        if (creditor.money < totalMortgageFees) {
+            try {
+                creditor.liquidateAssets(totalMortgageFees, bank, board)
+            } catch (_: BankruptcyException) {
+                // Cascading bankruptcy: creditor can't afford to receive assets
+                println("\t\t${creditor.name} cannot afford to receive ${this.name}'s assets")
+                creditor.declareBankruptcy(bank, board)
+                this.declareBankruptcy(bank, board)
+                return
+            }
+        }
+
+        // 5. Transfer deeds with mortgage handling
+        val deedsToTransfer = this.deeds.toList() // snapshot to avoid concurrent modification
+        for ((deed, development) in deedsToTransfer) {
+            // Fail fast if properties have development - this indicates a logic error
+            if (development.numHouses > 0 || development.hasHotel) {
+                throw ca.jonathanfritz.monopoly.exception.PropertyDevelopmentException(
+                    "$name cannot transfer ${deed::class.simpleName} with development " +
+                        "(houses: ${development.numHouses}, hotel: ${development.hasHotel}). " +
+                        "Properties must be fully liquidated before bankruptcy.",
+                )
+            }
+            
+            if (development.isMortgaged) {
+                // Creditor must decide: unmortgage or assume
+                if (creditor.shouldUnmortgageProperty(deed, deed.mortgageValue)) {
+                    // Unmortgage: pay 110% of mortgage value
+                    val unmortgageCost = ceil(deed.mortgageValue * 1.1).toInt()
+                    bank.charge(unmortgageCost, creditor, board, "to unmortgage ${deed::class.simpleName}")
+                    development.isMortgaged = false
+                } else {
+                    // Assume mortgage: pay 10% fee
+                    val assumptionFee = ceil(deed.mortgageValue * 0.1).toInt()
+                    bank.charge(assumptionFee, creditor, board, "to assume mortgage on ${deed::class.simpleName}")
+                    // development.isMortgaged remains true
+                }
+            }
+            // Transfer the deed
+            creditor.deeds[deed] = development
+        }
+
+        // 6. Clear bankrupt player's deeds
+        this.deeds.clear()
 
         isBankrupt = true
         println("\t\t$name is bankrupt!")

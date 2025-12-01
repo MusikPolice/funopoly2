@@ -482,4 +482,40 @@ internal class BoardTest {
         assertEquals(1, player.getDevelopment(Property.ConnecticutAvenue::class).numHouses)
         assertEquals(1, player.money)
     }
+
+    @Test
+    fun `player unmortgages properties at end of turn when sufficient cash reserves`() {
+        // Baltic Avenue: mortgage value $30, unmortgage cost $33
+        // Player needs >= $66 (2.2x mortgage value) to unmortgage per default strategy
+        val player =
+            Player(
+                "Count von Count",
+                money = 150,
+                deeds =
+                    mutableMapOf(
+                        Property.BalticAvenue() to Player.Development(isMortgaged = true),
+                        Property.MediterraneanAvenue() to Player.Development(isMortgaged = true),
+                    ),
+            )
+
+        // Player rolls non-doubles (1,3) landing on Income Tax (position 4)
+        val fakeDice = FakeDice(Roll(1, 3))
+        val board = Board(listOf(player), dice = fakeDice)
+
+        // Before the turn, both properties are mortgaged
+        assertTrue(player.getDevelopment(Property.BalticAvenue::class).isMortgaged)
+        assertTrue(player.getDevelopment(Property.MediterraneanAvenue::class).isMortgaged)
+
+        // Execute the turn - player lands on Income Tax, pays tax, then unmortgages at end of turn
+        board.executeRound(1)
+
+        // Player's net worth before tax: $150 (cash) + $60 (Baltic) + $60 (Mediterranean) = $270
+        // Income tax: min($200, 10% of $270) = $27
+        // After tax: $150 - $27 = $123
+        // Baltic requires $66 to unmortgage (2.2x $30): unmortgages for $33, left with $90
+        // Mediterranean requires $66 to unmortgage, player has $90 >= $66: unmortgages for $33, left with $57
+        assertFalse(player.getDevelopment(Property.BalticAvenue::class).isMortgaged)
+        assertFalse(player.getDevelopment(Property.MediterraneanAvenue::class).isMortgaged)
+        assertTrue(player.money < 123)
+    }
 }

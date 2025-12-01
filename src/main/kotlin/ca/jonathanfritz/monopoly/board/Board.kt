@@ -169,7 +169,10 @@ class Board(
                 // after rolling the dice, players can opt to develop their monopolies
                 player.developProperties(bank, this)
 
-                // TODO: trading, unmortgaging, etc
+                // after developing, players can opt to unmortgage properties
+                player.unmortgageProperties(bank, this)
+
+                // TODO: trading
             } while (diceRoll.isDoubles && doublesCount < 3 && !player.isBankrupt())
         }
     }
