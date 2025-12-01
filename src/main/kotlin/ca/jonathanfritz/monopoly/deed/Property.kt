@@ -61,7 +61,7 @@ sealed class Property(
 
     class PennsylvaniaAvenue : Property(Green, 320, 160, 200, 28, 150, 450, 1000, 1200, 1400)
 
-    class ParkPlace : Property(DarkBlue, 350, 175, 200, 35, 175, 500, 110, 1300, 1500)
+    class ParkPlace : Property(DarkBlue, 350, 175, 200, 35, 175, 500, 1100, 1300, 1500)
 
     class Boardwalk : Property(DarkBlue, 400, 200, 200, 50, 200, 600, 1400, 1700, 2000)
 
