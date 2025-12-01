@@ -66,4 +66,16 @@ internal class DiceTest {
         val otherActual = (0..10).map { otherDice.roll() }
         assertEquals(expected, otherActual)
     }
+
+    @Test
+    fun `Dice can roll all values between 1 and 6 inclusive`() {
+        val dice = Dice()
+        val set = mutableSetOf<Int>()
+        do {
+            val roll = dice.roll()
+            set.add(roll.die1)
+            set.add(roll.die2)
+        } while (set.size < 6)
+        assertEquals(setOf(1, 2, 3, 4, 5, 6), set)
+    }
 }

@@ -13,8 +13,8 @@ open class Dice(
     open fun roll(): Roll {
         previous =
             Roll(
-                rng.nextInt(1, 6),
-                rng.nextInt(1, 6),
+                rng.nextInt(1, 7),
+                rng.nextInt(1, 7),
             )
         return previous
     }
