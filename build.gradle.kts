@@ -7,9 +7,9 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(17)
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -32,7 +32,7 @@ tasks.test {
 }
 
 tasks.withType<JavaCompile> {
-    targetCompatibility = "24"
+    targetCompatibility = "17"
 }
 
 application {
