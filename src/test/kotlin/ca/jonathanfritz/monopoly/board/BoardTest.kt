@@ -518,4 +518,96 @@ internal class BoardTest {
         assertFalse(player.getDevelopment(Property.MediterraneanAvenue::class).isMortgaged)
         assertTrue(player.money < 123)
     }
+
+    @Test
+    fun `rolling doubles after landing on GoToJail should not grant another turn`() {
+        val player = Player("Bert", money = 500)
+        val fakeDice = FakeDice(Roll(5, 5))
+        val board = Board(listOf(player), dice = fakeDice)
+
+        // Position player at FreeParking (position 20)
+        player.position = 20
+
+        // Player rolls doubles (5,5) which moves them 10 spaces to GoToJail (position 30)
+        // According to rules: "Move directly to Jail. Do not collect $200. Turn ends."
+        // The turn should end immediately, no bonus turn for doubles
+        board.executeRound(1)
+
+        // Verify: player is in jail at position 10
+        assertTrue(player.isInJail)
+        assertEquals(10, player.position)
+
+        // Verify: dice was only rolled ONCE (no bonus turn for doubles)
+        assertEquals(1, fakeDice.rollCount, "Turn should end immediately after going to jail")
+    }
+
+    @Test
+    fun `no building should occur after going to jail`() {
+        // Player has monopoly on orange properties and enough cash to build
+        val player =
+            Player(
+                "Cookie Monster",
+                money = 500,
+                deeds =
+                    mutableMapOf(
+                        Property.StJamesPlace() to Player.Development(),
+                        Property.TennesseeAvenue() to Player.Development(),
+                        Property.NewYorkAvenue() to Player.Development(),
+                    ),
+            )
+
+        val fakeDice = FakeDice(Roll(5, 5))
+        val board = Board(listOf(player), dice = fakeDice)
+
+        // Position player at FreeParking (position 20)
+        player.position = 20
+
+        // Player rolls doubles (5,5) which moves them 10 spaces to GoToJail (position 30)
+        board.executeRound(1)
+
+        // Verify: player is in jail
+        assertTrue(player.isInJail)
+
+        // Verify: no houses were built (turn ended before development phase)
+        assertEquals(0, player.getDevelopment(Property.StJamesPlace::class).numHouses, "No building should occur after going to jail")
+        assertEquals(0, player.getDevelopment(Property.TennesseeAvenue::class).numHouses, "No building should occur after going to jail")
+        assertEquals(0, player.getDevelopment(Property.NewYorkAvenue::class).numHouses, "No building should occur after going to jail")
+    }
+
+    @Test
+    fun `no unmortgaging should occur after going to jail`() {
+        // Player has mortgaged properties and sufficient cash to unmortgage
+        val player =
+            Player(
+                "Elmo",
+                money = 200,
+                deeds =
+                    mutableMapOf(
+                        Property.BalticAvenue() to Player.Development(isMortgaged = true),
+                        Property.MediterraneanAvenue() to Player.Development(isMortgaged = true),
+                    ),
+            )
+
+        val fakeDice = FakeDice(Roll(5, 5))
+        val board = Board(listOf(player), dice = fakeDice)
+
+        // Position player at FreeParking (position 20)
+        player.position = 20
+
+        // Player rolls doubles (5,5) which moves them 10 spaces to GoToJail (position 30)
+        board.executeRound(1)
+
+        // Verify: player is in jail
+        assertTrue(player.isInJail)
+
+        // Verify: properties remain mortgaged (turn ended before unmortgage phase)
+        assertTrue(player.getDevelopment(Property.BalticAvenue::class).isMortgaged, "No unmortgaging should occur after going to jail")
+        assertTrue(
+            player.getDevelopment(Property.MediterraneanAvenue::class).isMortgaged,
+            "No unmortgaging should occur after going to jail",
+        )
+
+        // Verify: player still has all their cash (no unmortgage fees paid)
+        assertEquals(200, player.money)
+    }
 }

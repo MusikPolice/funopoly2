@@ -151,7 +151,7 @@ class Board(
                         goToJail(player)
 
                         // the player's turn ends immediately
-                        break
+                        return
                     }
                 } else if (player.isInJail) {
                     // the player has some number of turns to roll doubles, after which they must pay a fine
@@ -164,6 +164,11 @@ class Board(
                 // if the player is not in jail, they advance around the board
                 if (!player.isInJail) {
                     advancePlayerBy(player, diceRoll.amount, true)
+                }
+
+                // if the player went to jail during their move, their turn ends immediately
+                if (player.isInJail) {
+                    break
                 }
 
                 // after rolling the dice, players can opt to develop their monopolies
