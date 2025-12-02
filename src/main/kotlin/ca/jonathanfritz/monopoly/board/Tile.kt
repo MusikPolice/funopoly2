@@ -5,6 +5,8 @@ import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Railroad
 import ca.jonathanfritz.monopoly.deed.TitleDeed
 import ca.jonathanfritz.monopoly.deed.Utility
+import ca.jonathanfritz.monopoly.event.EventBus
+import ca.jonathanfritz.monopoly.event.GameEvent
 import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
 import kotlin.reflect.KClass
 
@@ -14,6 +16,7 @@ sealed class Tile {
         bank: Bank,
         board: Board,
         rentOverride: ((Player, Bank, Board) -> Int)? = null,
+        eventBus: EventBus? = null,
     )
 
     object Go : Tile() {
@@ -22,6 +25,7 @@ sealed class Tile {
             bank: Bank,
             board: Board,
             rentOverride: ((Player, Bank, Board) -> Int)?,
+            eventBus: EventBus?,
         ) {
             // nothing special happens here unless we're playing with house rules that double salary when the player lands on go
             println("\t\t${player.name} landed on Go")
@@ -36,6 +40,7 @@ sealed class Tile {
             bank: Bank,
             board: Board,
             rentOverride: ((Player, Bank, Board) -> Int)?,
+            eventBus: EventBus?,
         ) {
             val owner = board.players.firstOrNull { it.isOwner(deedClass) }
             if (owner != null) {
@@ -57,6 +62,7 @@ sealed class Tile {
                     println("\t\t${player.name} landed on ${deedClass.simpleName}. It is owned by ${owner.name}")
                     val rent = rentOverride?.invoke(player, bank, board) ?: deed.calculateRent(owner, board)
                     player.pay(rent, owner, bank, board, "in rent")
+                    eventBus?.emit(GameEvent.RentPaid(player, owner, rent, deed))
                 }
             } else {
                 // property is unowned, player that landed on it has the option to buy
@@ -93,9 +99,12 @@ sealed class Tile {
             bank: Bank,
             board: Board,
             rentOverride: ((Player, Bank, Board) -> Int)?,
+            eventBus: EventBus?,
         ) {
             println("\t\t${player.name} landed on CommunityChest (side $side)")
-            board.communityChest.draw().onDraw(player, bank, board)
+            val card = board.communityChest.draw()
+            eventBus?.emit(GameEvent.CardDrawn(player, "Community Chest", card))
+            card.onDraw(player, bank, board)
         }
     }
 
@@ -105,6 +114,7 @@ sealed class Tile {
             bank: Bank,
             board: Board,
             rentOverride: ((Player, Bank, Board) -> Int)?,
+            eventBus: EventBus?,
         ) {
             val amount = player.incomeTaxAmount()
             bank.charge(amount, player, board, "in income tax")
@@ -119,9 +129,12 @@ sealed class Tile {
             bank: Bank,
             board: Board,
             rentOverride: ((Player, Bank, Board) -> Int)?,
+            eventBus: EventBus?,
         ) {
             println("\t\t${player.name} landed on Chance (side $side)")
-            board.chance.draw().onDraw(player, bank, board)
+            val card = board.chance.draw()
+            eventBus?.emit(GameEvent.CardDrawn(player, "Chance", card))
+            card.onDraw(player, bank, board)
         }
     }
 
@@ -131,6 +144,7 @@ sealed class Tile {
             bank: Bank,
             board: Board,
             rentOverride: ((Player, Bank, Board) -> Int)?,
+            eventBus: EventBus?,
         ) {
             if (player.isInJail) {
                 println("\t\t${player.name} is In Jail")
@@ -146,6 +160,7 @@ sealed class Tile {
             bank: Bank,
             board: Board,
             rentOverride: ((Player, Bank, Board) -> Int)?,
+            eventBus: EventBus?,
         ) {
             // this does nothing unless house rule that awards the pot is active
             println("\t\t${player.name} landed on FreeParking")
@@ -158,6 +173,7 @@ sealed class Tile {
             bank: Bank,
             board: Board,
             rentOverride: ((Player, Bank, Board) -> Int)?,
+            eventBus: EventBus?,
         ) {
             println("\t\t${player.name} landed on GoToJail")
             board.goToJail(player)
@@ -170,6 +186,7 @@ sealed class Tile {
             bank: Bank,
             board: Board,
             rentOverride: ((Player, Bank, Board) -> Int)?,
+            eventBus: EventBus?,
         ) {
             bank.charge(100, player, board, "in luxury tax")
         }

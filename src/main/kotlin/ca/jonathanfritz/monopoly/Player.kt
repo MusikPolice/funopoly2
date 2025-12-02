@@ -6,6 +6,8 @@ import ca.jonathanfritz.monopoly.card.Card
 import ca.jonathanfritz.monopoly.deed.ColourGroup
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.TitleDeed
+import ca.jonathanfritz.monopoly.event.EventBus
+import ca.jonathanfritz.monopoly.event.GameEvent
 import ca.jonathanfritz.monopoly.exception.BankruptcyException
 import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
 import kotlin.math.ceil
@@ -31,6 +33,9 @@ open class Player(
 
     // any Get out of Jail Free cards that the player has in their inventory
     private val getOutOfJailFreeCards: MutableList<Card.GetOutOfJailFreeCard> = mutableListOf(),
+
+    // optional event bus for statistics collection
+    private val eventBus: EventBus? = null,
 ) {
     // true if the player is in jail (as opposed to just visiting)
     var remainingTurnsInJail = 0
@@ -286,6 +291,8 @@ open class Player(
             throw IllegalStateException("$name has declared bankruptcy without first liquidating their assets")
         }
 
+        val netWorthAtBankruptcy = netWorth()
+
         // money
         bank.charge(money, this, board, "in the bankruptcy settlement")
 
@@ -298,6 +305,9 @@ open class Player(
 
         isBankrupt = true
         println("\t\t$name is bankrupt!")
+
+        // emit bankruptcy event
+        eventBus?.emit(GameEvent.PlayerBankrupted(this, bank, board.currentRound, netWorthAtBankruptcy))
     }
 
     private fun declareBankruptcy(
@@ -355,7 +365,7 @@ open class Player(
                         "Properties must be fully liquidated before bankruptcy.",
                 )
             }
-            
+
             if (development.isMortgaged) {
                 // Creditor must decide: unmortgage or assume
                 if (creditor.shouldUnmortgageProperty(deed, deed.mortgageValue)) {
@@ -379,6 +389,9 @@ open class Player(
 
         isBankrupt = true
         println("\t\t$name is bankrupt!")
+
+        // emit bankruptcy event
+        eventBus?.emit(GameEvent.PlayerBankrupted(this, creditor, board.currentRound, 0))
     }
 
     private fun Map<TitleDeed, Development>.selectDeedsToMortgage(): List<TitleDeed> =

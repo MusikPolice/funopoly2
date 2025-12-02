@@ -2,20 +2,28 @@ package ca.jonathanfritz.monopoly
 
 import ca.jonathanfritz.monopoly.board.Bank
 import ca.jonathanfritz.monopoly.board.Board
+import ca.jonathanfritz.monopoly.event.EventBus
+import ca.jonathanfritz.monopoly.event.GameEvent
 import kotlin.random.Random
 
 // TODO:
-//  implement asset transfer on bankruptcy
 //  update rules to match 2023 box edition
-//  start collecting stats on landings, rounds, net worth deltas, etc
 //  property auctions on decline to buy?
 //  trading between players?
 //  house rules
+@Suppress("ktlint:standard:no-blank-line-in-list")
 class Monopoly(
     private val players: List<Player>,
+
     private val rng: Random = Random.Default,
-    private val bank: Bank = Bank(),
-    private val board: Board = Board(players, rng = rng),
+
+    // optional event bus for statistics collection
+    private val eventBus: EventBus? = null,
+
+    private val bank: Bank = Bank(eventBus = eventBus),
+
+    private val board: Board = Board(players, bank, rng, eventBus = eventBus),
+
     private val config: Config = Config(),
 ) {
     init {
@@ -35,10 +43,16 @@ class Monopoly(
 
             // if all but one player has been bankrupted, the game is over
             if (players.count { it.isBankrupt() } == players.size - 1) {
+                val winner = players.firstOrNull { !it.isBankrupt() }
                 println("\nGame over!")
+                eventBus?.emit(GameEvent.GameEnded(winner, round, "bankruptcy"))
                 return
             }
         }
+
+        // game ended by reaching max rounds
+        val winner = players.filterNot { it.isBankrupt() }.maxByOrNull { it.netWorth() }
+        eventBus?.emit(GameEvent.GameEnded(winner, config.maxRounds, "max rounds reached"))
     }
 
     // TODO: add properties here that change gameplay to reflect deviations from the official rules that we want to simulate

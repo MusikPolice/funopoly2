@@ -14,14 +14,24 @@ import ca.jonathanfritz.monopoly.deed.Property.*
 import ca.jonathanfritz.monopoly.deed.Railroad
 import ca.jonathanfritz.monopoly.deed.Railroad.*
 import ca.jonathanfritz.monopoly.deed.Utility.*
+import ca.jonathanfritz.monopoly.event.EventBus
+import ca.jonathanfritz.monopoly.event.GameEvent
 import kotlin.random.Random
 import kotlin.reflect.KClass
 
+@Suppress("ktlint:standard:no-blank-line-in-list")
 class Board(
     val players: List<Player>,
+
     private val bank: Bank = Bank(),
+
     private val rng: Random = Random,
+
     val dice: Dice = Dice(rng),
+
+    // optional event bus for statistics collection
+    internal val eventBus: EventBus? = null,
+
     // the Chance deck. See https://monopoly.fandom.com/wiki/Chance#Cards
     val chance: Deck<Card> =
         Deck(
@@ -45,6 +55,7 @@ class Board(
             ),
             rng,
         ),
+
     // the Community Chest deck. See https://monopoly.fandom.com/wiki/Community_Chest#Cards
     val communityChest: Deck<Card> =
         Deck(
@@ -69,6 +80,7 @@ class Board(
             ),
             rng,
         ),
+
     private val config: Config = Config(),
 ) {
     // the board is made of tiles, starting by convention with Go
@@ -116,11 +128,18 @@ class Board(
             PropertyBuyable(Boardwalk::class),
         )
 
+    // track current round for bankruptcy events
+    var currentRound: Int = 0
+        private set
+
     fun executeRound(round: Int) {
+        currentRound = round
         println("\nRound $round:")
+        eventBus?.emit(GameEvent.RoundStarted(round))
 
         // in each round, every player gets between one and three turns on which to affect the game state
         players.filterNot { it.isBankrupt() }.forEach { player ->
+            eventBus?.emit(GameEvent.TurnStarted(player, round))
             println(
                 $$"\n\tStarting $${player.name}'s turn $${if (player.isInJail) "In" else "on"} $${player.tileName()} with $$${player.money}",
             )
@@ -135,6 +154,7 @@ class Board(
             do {
                 if (doublesCount > 0) println("\t${player.name} rolled doubles and gets another turn")
                 val diceRoll = dice.roll()
+                eventBus?.emit(GameEvent.DiceRolled(player, diceRoll.die1, diceRoll.die2, diceRoll.isDoubles))
                 if (diceRoll.isDoubles) {
                     doublesCount++
 
@@ -142,13 +162,14 @@ class Board(
                         // if the player is in jail, they are released upon rolling doubles
                         println("\t\t${player.name} rolled doubles and is released from jail early")
                         player.isInJail = false
+                        eventBus?.emit(GameEvent.PlayerLeftJail(player, "rolled doubles"))
 
                         // the player does not get another turn despite having rolled doubles
                         doublesCount = 3
                     } else if (doublesCount == 3) {
                         // if the player has rolled three consecutive doubles, they go directly to jail
                         println("\t\t${player.name} rolled three consecutive doubles. Go to jail!")
-                        goToJail(player)
+                        goToJail(player, "three consecutive doubles")
 
                         // the player's turn ends immediately
                         return
@@ -157,6 +178,7 @@ class Board(
                     // the player has some number of turns to roll doubles, after which they must pay a fine
                     if (player.decrementRemainingTurnsInJail() == 0) {
                         bank.charge(config.getOutOfJailEarlyFeeAmount, player, this, "to get out ouf jail")
+                        eventBus?.emit(GameEvent.PlayerLeftJail(player, "paid fee"))
                     }
                 }
                 println("\t\t${player.name} rolled a ${diceRoll.amount} ${if (diceRoll.isDoubles) "(doubles)" else ""}")
@@ -179,7 +201,11 @@ class Board(
 
                 // TODO: trading
             } while (diceRoll.isDoubles && doublesCount < 3 && !player.isBankrupt())
+
+            eventBus?.emit(GameEvent.TurnEnded(player, round))
         }
+
+        eventBus?.emit(GameEvent.RoundEnded(round))
     }
 
     private fun attemptToGetOutOfJail(player: Player) {
@@ -188,10 +214,12 @@ class Board(
             // return the card to the appropriate deck and let the player out of jail
             returnGetOutOfJailFreeCard(card)
             player.isInJail = false
+            eventBus?.emit(GameEvent.PlayerLeftJail(player, "used card"))
         } else if (player.isPayingGetOutOfJailEarlyFee(config.getOutOfJailEarlyFeeAmount)) {
             // charge the player a fee and let them out of jail
             bank.charge(config.getOutOfJailEarlyFeeAmount, player, this, "to get out of jail early")
             player.isInJail = false
+            eventBus?.emit(GameEvent.PlayerLeftJail(player, "paid fee"))
         }
     }
 
@@ -202,8 +230,12 @@ class Board(
         }
     }
 
-    fun goToJail(player: Player) {
+    fun goToJail(
+        player: Player,
+        reason: String = "landed on Go To Jail",
+    ) {
         player.isInJail = true
+        eventBus?.emit(GameEvent.PlayerSentToJail(player, reason))
         advancePlayerToTile(player, Jail::class)
     }
 
@@ -238,8 +270,11 @@ class Board(
             bank.pay(200, player, "for passing go")
         }
 
+        eventBus?.emit(GameEvent.PlayerMoved(player, oldPosition, player.position, passedGo && collectSalary))
+        eventBus?.emit(GameEvent.TileLanded(player, newTile))
+
         // process the events triggered by the player having landed on the new tile
-        newTile.onLanding(player, bank, this, rentOverride)
+        newTile.onLanding(player, bank, this, rentOverride, eventBus)
     }
 
     // advances the player to the next instance of the indicated tile type

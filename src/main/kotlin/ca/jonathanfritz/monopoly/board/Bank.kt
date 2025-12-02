@@ -3,6 +3,8 @@ package ca.jonathanfritz.monopoly.board
 import ca.jonathanfritz.monopoly.Player
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.TitleDeed
+import ca.jonathanfritz.monopoly.event.EventBus
+import ca.jonathanfritz.monopoly.event.GameEvent
 import ca.jonathanfritz.monopoly.exception.BankruptcyException
 import ca.jonathanfritz.monopoly.exception.InsufficientFundsException
 import ca.jonathanfritz.monopoly.exception.InsufficientTokenException
@@ -12,16 +14,23 @@ import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
 import kotlin.math.ceil
 import kotlin.reflect.KClass
 
+@Suppress("ktlint:standard:no-blank-line-in-list")
 class Bank(
     // https://www.hasbro.com/common/instruct/00009.pdf
     private var availableHouses: Int = 32,
+
     private var availableHotels: Int = 12,
+
     // https://www.monopolyland.com/how-much-money-in-monopoly-set/
     // TODO: apparently old sets (pre-2008) shipped with $15,140 - could be a difference that we can test
     // TODO: per the rules, the bank can never run out of money, so maybe this doesn't matter?
     var money: Int = 20580,
+
     // a list of all title deeds that the bank can sell to players
     private val titleDeeds: MutableList<TitleDeed> = mutableListOf(*TitleDeed.values.values.toTypedArray()),
+
+    // optional event bus for statistics collection
+    private val eventBus: EventBus? = null,
 ) {
     fun pay(
         amount: Int,
@@ -33,6 +42,7 @@ class Bank(
         println($$"\t\t$${player.name} receives $$$amount from the bank $$reason")
         money -= amount
         player.money += amount
+        eventBus?.emit(GameEvent.BankPaidPlayer(player, amount, reason))
     }
 
     fun charge(
@@ -55,6 +65,7 @@ class Bank(
         println($$"\t\t$${player.name} pays $$$amount $$reason")
         money += amount
         player.money -= amount
+        eventBus?.emit(GameEvent.PlayerChargedByBank(player, amount, reason))
     }
 
     fun deed(deedClass: KClass<out TitleDeed>): TitleDeed? = titleDeeds.firstOrNull { it::class == deedClass }
@@ -74,6 +85,7 @@ class Bank(
 
         pay(deed.mortgageValue, player, "for mortgaging ${deedClass.simpleName}")
         player.deeds.getValue(deed).isMortgaged = true
+        eventBus?.emit(GameEvent.PropertyMortgaged(player, deed, deed.mortgageValue))
     }
 
     fun unmortgageDeed(
@@ -93,6 +105,7 @@ class Bank(
         val unmortgageCost = ceil(deed.mortgageValue * 1.1).toInt()
         charge(unmortgageCost, player, board, "to unmortgage ${deedClass.simpleName}")
         development.isMortgaged = false
+        eventBus?.emit(GameEvent.PropertyUnmortgaged(player, deed, unmortgageCost))
     }
 
     fun sellDeedToPlayer(
@@ -107,6 +120,7 @@ class Bank(
         charge(purchasePrice, player, board, "to buy ${deedClass.simpleName}")
         titleDeeds.remove(deed)
         player.deeds[deed] = Player.Development()
+        eventBus?.emit(GameEvent.PropertyPurchased(player, deed, purchasePrice))
     }
 
     // TODO: houses can be built out of turn, potentially triggering an auction for
@@ -149,6 +163,8 @@ class Bank(
         player.deeds[deed]?.let {
             it.numHouses += 1
         }
+        val newHouseCount = player.deeds[deed]?.numHouses ?: 0
+        eventBus?.emit(GameEvent.HousePurchased(player, deed as Property, newHouseCount, buildingCost))
     }
 
     fun buyHouseFromPlayer(
@@ -177,8 +193,9 @@ class Bank(
         }
 
         // the player returns the house to the bank and is paid half the building's value
+        val proceeds = ceil((deed as Property).buildingCost / 2f).toInt()
         pay(
-            ceil((deed as Property).buildingCost / 2f).toInt(),
+            proceeds,
             player,
             "for selling a house on ${propertyClass.simpleName}",
         )
@@ -186,6 +203,8 @@ class Bank(
         player.deeds[deed]?.let {
             it.numHouses -= 1
         }
+        val newHouseCount = player.deeds[deed]?.numHouses ?: 0
+        eventBus?.emit(GameEvent.HouseSold(player, deed, newHouseCount, proceeds))
     }
 
     // TODO: hotels can be built out of turn, potentially triggering an auction for
@@ -235,6 +254,7 @@ class Bank(
             it.numHouses = 0
             it.hasHotel = true
         }
+        eventBus?.emit(GameEvent.HotelPurchased(player, deed as Property, buildingCost))
     }
 
     fun buyHotelFromPlayer(
@@ -262,8 +282,9 @@ class Bank(
         if (availableHouses < 4) throw InsufficientTokenException("The bank does not have any houses available to replace the sold hotel")
 
         // the player returns the hotel to the bank and is paid half the building's value
+        val proceeds = ceil((deed as Property).buildingCost / 2f).toInt()
         pay(
-            ceil((deed as Property).buildingCost / 2f).toInt(),
+            proceeds,
             player,
             "for selling the hotel on ${propertyClass.simpleName}",
         )
@@ -273,6 +294,7 @@ class Bank(
             it.numHouses = 4
             it.hasHotel = false
         }
+        eventBus?.emit(GameEvent.HotelSold(player, deed, proceeds))
     }
 
     fun transferMortgagedDeeds(deeds: Set<TitleDeed>) {

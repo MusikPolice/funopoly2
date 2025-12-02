@@ -451,7 +451,7 @@ All `eventBus` parameters will be nullable and default to `null`. This ensures:
 
 ## 6. Implementation Phases
 
-**Current Status:** ✅ Phase 1 Complete | 🔄 Phase 2 In Progress
+**Current Status:** ✅ Phase 1 Complete | ✅ Phase 2 Complete | 🔄 Phase 3 In Progress
 
 ### Phase 1: Foundation (Event Infrastructure) ✅ COMPLETE
 **Goal:** Create event system without disrupting existing functionality
@@ -484,7 +484,7 @@ All `eventBus` parameters will be nullable and default to `null`. This ensures:
 
 ---
 
-### Phase 2: Event Emission (Game Integration)
+### Phase 2: Event Emission (Game Integration) ✅ COMPLETE
 **Goal:** Thread EventBus through game components and emit events
 
 **Tasks:**
@@ -509,6 +509,24 @@ All `eventBus` parameters will be nullable and default to `null`. This ensures:
 - Events emitted from all key game actions
 - Tests verifying event emission
 - No breaking changes to existing tests
+
+**Completion Summary (Dec 2, 2025):**
+- ✅ Added `eventBus` parameter to `Monopoly`, `Board`, `Bank`, `Player` (all nullable with default null)
+- ✅ Emitted 21 event types across all game components:
+  - Movement: `RoundStarted`, `TurnStarted`, `DiceRolled`, `PlayerMoved`, `TileLanded`, `TurnEnded`, `RoundEnded`
+  - Financial: `BankPaidPlayer`, `PlayerChargedByBank`, `RentPaid`
+  - Property: `PropertyPurchased`, `PropertyMortgaged`, `PropertyUnmortgaged`
+  - Development: `HousePurchased`, `HotelPurchased`, `HouseSold`, `HotelSold`
+  - Jail: `PlayerSentToJail`, `PlayerLeftJail`
+  - Cards: `CardDrawn`
+  - Bankruptcy: `PlayerBankrupted`
+  - Lifecycle: `GameEnded`
+- ✅ Updated `Tile.onLanding()` to accept and pass through `eventBus`
+- ✅ Added `Board.currentRound` to track round number for bankruptcy events
+- ✅ Made `Board.eventBus` internal visibility for Player access
+- ✅ Created comprehensive integration test suite (12 tests covering all event types)
+- ✅ All existing tests pass without modification
+- ✅ Zero breaking changes to game logic
 
 ---
 
@@ -731,8 +749,8 @@ class StatisticsVisualizer(val report: StatisticsReport) {
 ### Phase 1-2 Success:
 - [x] All existing tests pass without modification
 - [x] Event bus can register listeners and deliver events
-- [ ] Events are emitted from all key game actions (Phase 2)
-- [ ] Test coverage for event emission is >80% (Phase 2)
+- [x] Events are emitted from all key game actions (Phase 2)
+- [x] Test coverage for event emission is >80% (Phase 2)
 
 ### Phase 3-4 Success:
 - [ ] GameStatistics correctly tracks all defined metrics
