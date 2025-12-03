@@ -1,53 +1,97 @@
-# Funopoly2 Technical Analysis
+# Funopoly2 System Technical Analysis
 
 **Version:** 1.0-SNAPSHOT  
-**Last Updated:** December 1, 2025 (Post-Bankruptcy Implementation)  
-**Primary Language:** Kotlin 2.2.20  
+**Last Reviewed:** December 3, 2025  
+**Primary Language:** Kotlin 2.2.x  
 **Target JVM:** 17
+
+**Supersedes:** `docs/TechnicalAnalysis.md`, `docs/EventSystemGuide.md`
 
 ---
 
-## 1. Project Purpose & Goals
+## 1. Project Purpose & Current Status
 
-### Primary Objective
-Build a **Monte Carlo simulation** that evaluates the relative "fun" level of different house rules commonly used when playing Monopoly.
+### 1.1 Objective
 
-### Current Phase
-Implementing a **correct and fully tested** base game that adheres to official Monopoly rules as published in 2021 editions.
-**Recent Completion (Dec 2025):** Player-to-player bankruptcy and property unmortgaging fully implemented.
+Funopoly2 is a Monopoly rules engine and simulator intended to support:
 
-### Future Vision
-- Simulate thousands of games with varying rule configurations
-- Collect statistical data on game outcomes, player experiences, and game duration
-- Quantify the impact of house rules on game dynamics
+- **Accurate base rules implementation** of modern Monopoly (board layout, deeds, cards, jail, development, bankruptcy, etc.).
+- **Programmatic simulation** of complete games with deterministic RNG for reproducibility.
+- **Event-driven statistics collection** to enable later Monte Carlo and house-rule analysis.
+
+### 1.2 Current Capabilities (From Code)
+
+Implemented and present in code:
+
+- **Core game loop** (`Monopoly.executeGame`) with:
+  - Turn/round execution via `Board.executeRound`.
+  - End conditions: all but one player bankrupt, or `maxRounds` reached.
+- **Domain model:** players, board, tiles, dice, bank, deeds (properties, railroads, utilities), Chance & Community Chest cards, exceptions.
+- **Bankruptcy and unmortgaging:**
+  - Bankruptcy to bank and player-to-player bankruptcy with mortgage fee handling and cascading bankruptcy.
+  - Property unmortgaging at 110% of mortgage value; strategy-based decision (`Player.shouldUnmortgageProperty`).
+- **Property development and liquidation:**
+  - Even-building rules enforced in `TitleDeed` helpers and `Bank` operations.
+  - Greedy development and structured liquidation strategy in `Player`.
+- **Event system:**
+  - `EventBus`, `GameEvent` (22 event types), `GameEventListener`.
+  - Integrated emissions from `Monopoly`, `Board`, `Bank`, `Tile`, and bankruptcy logic in `Player`.
+- **Statistics system:**
+  - `GameStatistics` listener that consumes all `GameEvent`s.
+  - `StatisticsReport` data model with 6 sections.
+  - `StatisticsFormatter` producing console text or JSON.
+  - Configuration via `Config.collectStatistics` and `StatisticsOutputFormat`.
+
+Not implemented or explicitly TODO in code:
+
+- Property auctions after declined purchases and on bankruptcy returns.
+- Player trading / negotiation.
+- Rich **player strategy abstraction** (current logic is hard-coded methods on `Player`).
+- House rules (Free Parking pot, double GO salary, variable starting cash, etc.).
+- Monte Carlo batch runner and cross-game aggregation of stats.
+- Structured logging (stdout `println` is used throughout).
+- Updating rule implementation to a 2023 ruleset (TODO in `Monopoly.kt`).
 
 ---
 
 ## 2. Architecture & Code Structure
 
-### Package Organization
+### 2.1 Package Overview
 
-```
+Root package: `ca.jonathanfritz.monopoly`
+
+High-level structure (from `src/main/kotlin`):
+
+```text
 ca.jonathanfritz.monopoly/
-├── Monopoly.kt              # Main game orchestrator
-├── Player.kt                # Player state and behavior
-├── Config.kt                # Game configuration
+├── Monopoly.kt              # Main game orchestrator & entry point
+├── Config.kt                # Game configuration (rounds, statistics)
+├── Player.kt                # Player state, strategy, liquidation & bankruptcy
 ├── board/
-│   ├── Board.kt             # Game board, round execution
-│   ├── Bank.kt              # Financial transactions, property sales
-│   ├── Dice.kt              # Dice rolling mechanics
-│   └── Tile.kt              # Board tile types and landing behavior
+│   ├── Board.kt             # Board layout, round/turn execution, movement
+│   ├── Bank.kt              # Money, deeds, houses/hotels, mortgages
+│   ├── Dice.kt              # Dice rolling and previous roll tracking
+│   └── Tile.kt              # 40-tile sealed hierarchy and landing behavior
 ├── card/
-│   ├── Card.kt              # Base card types
-│   ├── ChanceCard.kt        # All Chance cards (16 cards)
-│   ├── CommunityChestCard.kt # All Community Chest cards (17 cards)
-│   └── Deck.kt              # Card deck management
+│   ├── Card.kt              # Base card types & shared behavior
+│   ├── ChanceCard.kt        # 16 Chance cards
+│   ├── CommunityChestCard.kt# 17 Community Chest cards
+│   └── Deck.kt              # Deck shuffling/draw/discard
 ├── deed/
 │   ├── TitleDeed.kt         # Abstract base for all deeds
 │   ├── Property.kt          # 22 buildable properties
 │   ├── Railroad.kt          # 4 railroads
 │   ├── Utility.kt           # 2 utilities
-│   └── ColourGroup.kt       # Property grouping enum
+│   └── ColourGroup.kt       # Property colour groups
+├── event/
+│   ├── GameEvent.kt         # Sealed class with 22 event types
+│   ├── EventBus.kt          # Event distribution to listeners
+│   └── GameEventListener.kt # Observer interface
+├── statistics/
+│   ├── GameStatistics.kt       # Event listener and accumulator
+│   ├── StatisticsReport.kt     # Report data model
+│   ├── StatisticsFormatter.kt  # Console/JSON formatters
+│   └── StatisticsOutputFormat.kt # Output format enum
 └── exception/
     ├── BankruptcyException.kt
     ├── InsufficientFundsException.kt
@@ -57,772 +101,508 @@ ca.jonathanfritz.monopoly/
     └── PropertyOwnershipException.kt
 ```
 
-### Design Patterns
+### 2.2 Key Design Patterns & Conventions
 
-**Sealed Classes**  
-- `TitleDeed`, `Property`, `Railroad`, `Utility` - Type-safe property hierarchies
-- `Tile` - All 40 board spaces as sealed class instances
-- `Card`, `ChanceCard`, `CommunityChestCard` - Card type hierarchies
-
-**Companion Objects**  
-- Used in `Property`, `Railroad`, `Utility` to create pseudo-enum behavior with reflection
-- Provides `values` map for accessing all instances of a sealed class
-
-**Strategy Pattern**  
-- Tiles implement `onLanding()` with behavior specific to each tile type
-- Cards implement `onDraw()` with card-specific effects
+- **Sealed class hierarchies**
+  - `Tile` models all 40 spaces.
+  - `TitleDeed` → `Property`, `Railroad`, `Utility`.
+  - `Card` and its Chance/CommunityChest variants.
+  - `GameEvent` for event types.
+- **Enum-like sealed registries**
+  - Companion utilities (e.g., `TitleDeed.values`) use reflection to list all instances once at startup.
+- **Strategy via overridable methods on `Player`**
+  - `isBuying`, `isPayingGetOutOfJailEarlyFee`, `developProperties`, `liquidateAssets`, `shouldUnmortgageProperty` are `open` and intended as extension points, but not factored into a dedicated strategy interface yet.
+- **Observer pattern for events and statistics**
+  - `EventBus` with pluggable `GameEventListener`s (e.g., `GameStatistics`).
+- **Exception-driven rule enforcement**
+  - Illegal operations (e.g., building without monopoly, selling non-existent houses, mortgaging developed property) throw domain-specific exceptions.
 
 ---
 
 ## 3. Core Domain Model
 
-### 3.1 Monopoly (Main Game Class)
-**Location:** `Monopoly.kt`
+### 3.1 Monopoly
 
-**Responsibilities:**
-- Game initialization (grants starting cash, sets player positions)
-- Game loop execution via `executeGame()`
-- Victory condition detection (one player remaining)
+**File:** `Monopoly.kt`
 
-**Key Details:**
-- Configurable via `Monopoly.Config` (currently only `maxRounds`)
-- Uses seeded RNG for reproducible games (currently seed=1)
-- Delegates round execution to `Board`
+Responsibilities:
 
-### 3.2 Player
-**Location:** `Player.kt`
+- **Game setup** in `init`:
+  - Uses `Bank.pay(1500, player, "in starting salary")` to grant starting cash.
+  - Initializes all players to `position = 0` (Go).
+- **Game loop** (`executeGame`):
+  - For rounds `1..config.maxRounds`, calls `board.executeRound(round)`.
+  - If exactly one player is not bankrupt, declares winner with reason `"bankruptcy"` and emits `GameEvent.GameEnded`.
+  - If `maxRounds` reached, selects a winner by highest `Player.netWorth()` and emits `GameEvent.GameEnded` with reason `"max rounds reached"`.
+- **Statistics integration:**
+  - If `Config.collectStatistics` is true, constructs an `EventBus`, registers `GameStatistics`, and wires `Bank` and `Board` to that bus.
+  - On game end, calls `outputStatistics()` which uses `StatisticsFormatter` to print console or JSON according to `config.statisticsOutputFormat`.
 
-**State:**
-- `name: String` - Display name
-- `money: Int` - Cash on hand
-- `position: Int` - Board position (0-39)
-- `deeds: MutableMap<TitleDeed, Development>` - Owned properties with development state
-- `isInJail: Boolean` - Jail status (auto-sets `remainingTurnsInJail`)
-- `getOutOfJailFreeCards: MutableList` - Inventory of get-out-of-jail cards
+### 3.2 Config
 
-**Key Methods:**
+**File:** `Config.kt`
 
-**`hasMonopoly(colourGroup: ColourGroup): Boolean`**
-- Returns true if player owns all properties in a color group
-- Essential for development and rent doubling
+From code (not reproduced here), `Config` includes at least:
 
-**`netWorth(): Int`**
-- Formula: `cash + deed prices + building costs`
-- Used for income tax calculation and liquidation decisions
+- `maxRounds: Int` – maximum round count before forced end.
+- `collectStatistics: Boolean` – enables the event bus and `GameStatistics`.
+- `statisticsOutputFormat: StatisticsOutputFormat` – `CONSOLE` or `JSON`.
+- `getOutOfJailEarlyFeeAmount: Int` – fee used in Board jail logic.
 
-**`incomeTaxAmount(): Int`**
-- Returns lesser of $200 or 10% of net worth
+Config is **underutilized** relative to the number of hardcoded constants in the game logic.
 
-**`isBuying(deed: TitleDeed): Boolean`**
-- Current strategy: Buy if `money > deed.price`
-- TODO: More sophisticated purchasing logic
+### 3.3 Player
 
-**`developProperties(bank: Bank, board: Board)`**
-- **Critical Algorithm** - See Section 4.1
+**File:** `Player.kt`
 
-**liquidateAssets(requiredAmount: Int, bank: Bank, board: Board)**
-- **Critical Algorithm** - See Section 4.2
+State (selected fields):
 
-**shouldUnmortgageProperty(deed: TitleDeed, mortgageValue: Int): Boolean**
-- Strategy method for deciding whether to unmortgage properties
-- Default: unmortgage if `money >= mortgageValue * 2.2`
-- Overridable for custom AI strategies
+- `name: String`, `money: Int`, `position: Int` (0–39).
+- `deeds: MutableMap<TitleDeed, Development>` – owned deeds and their development state.
+- `isBankrupt: Boolean` (private backing, `isBankrupt()` accessor).
+- Jail state: `isInJail: Boolean` (setter manages `remainingTurnsInJail`), `remainingTurnsInJail: Int`.
+- Inventory: `getOutOfJailFreeCards: MutableList<Card.GetOutOfJailFreeCard>`.
+- Optional `eventBus: EventBus?` used only for bankruptcy events.
 
-**unmortgageProperties(bank: Bank, board: Board)**
-- Called at end of turn after development
-- Unmortgages properties approved by strategy
-- Pays 110% of mortgage value via bank.unmortgageDeed()
+Important methods (behavior verified in code):
 
-**countDevelopments(): Pair<Int, Int>**
-- Returns `(totalHouses, totalHotels)` across all owned properties
+- **Ownership & monopoly:**
+  - `isOwner(deedClass)`, `getDevelopment(deedClass)`.
+  - `hasMonopoly(colourGroup)` computes ownership vs. `ColourGroup.titleDeeds()`.
+- **Wealth & tax:**
+  - `netWorth()` = cash + sum of deed prices + building cost of all current developments.
+  - `incomeTaxAmount()` = `ceil(min(200, 10% of net worth))`.
+- **Jail:**
+  - `isPayingGetOutOfJailEarlyFee(amount)` – pays if in jail, no GOOJF card, still has remaining turns, and `money > amount`.
+  - `useGetOutOfJailFreeCard()` – consumes a card if in jail.
+- **Development:**
+  - `developProperties(bank, board)` – greedy development strategy (Section 4.1).
+  - `unmortgageProperties(bank, board)` – unmortgage based on `shouldUnmortgageProperty`.
+- **Strategy hooks:**
+  - `isBuying(deed)` – current rule: buy if `money > deed.price`.
+  - `shouldUnmortgageProperty(deed, mortgageValue)` – default true when `money >= 2.2 * mortgageValue`.
+- **Liquidation & bankruptcy:**
+  - `liquidateAssets(requiredAmount, bank, board)` – 3-phase mortgage/sell strategy (Section 4.2).
+  - `declareBankruptcy(bank, board)` – bankruptcy to bank (requires full liquidation; transfers deeds back to bank and emits `GameEvent.PlayerBankrupted` with creditor=`Bank`).
+  - `private declareBankruptcy(creditor: Player, bank, board)` – full player-to-player bankruptcy; cash, GOOJF cards, all mortgaged deeds transferred; handles mortgage assumption/unmortgaging and cascading bankruptcy; emits `GameEvent.PlayerBankrupted` with creditor=`Player` or `Bank` depending on outcome.
 
-**declareBankruptcy(bank: Bank, board: Board)**
-- Bankruptcy to bank: transfers cash, returns GOOJF cards, transfers mortgaged deeds
-- Validates full liquidation before bankruptcy
+### 3.4 Board & Tiles
 
-**declareBankruptcy(creditor: Player, bank: Bank, board: Board)**
-- **FULLY IMPLEMENTED** - Player-to-player bankruptcy
-- Transfers: cash, GOOJF cards, all deeds to creditor
-- Pre-calculates fees: 10% to assume mortgage OR 110% to unmortgage
-- Liquidates creditor assets if needed for fees
-- Handles cascading bankruptcy (both bankrupt to bank if creditor can't afford)
-- Validates no houses/hotels remain (throws `PropertyDevelopmentException`)
+**File:** `board/Board.kt`
 
-### 3.3 Board
-**Location:** `board/Board.kt`
+- Maintains:
+  - `players: List<Player>`.
+  - `bank: Bank` (shared with `Monopoly`).
+  - `dice: Dice`.
+  - `chance: Deck<Card>` and `communityChest: Deck<Card>` pre-populated with 16/17 specific cards.
+  - `tiles: List<Tile>` representing the full board including Go, properties, railroads, utilities, taxes, Chance, Community Chest, Jail/GoToJail, Free Parking.
+  - `currentRound: Int` to annotate bankruptcy events.
+- Core methods:
+  - `executeRound(round: Int)` – runs one round:
+    - Emits `RoundStarted`/`RoundEnded` events.
+    - For each non-bankrupt player:
+      - Emits `TurnStarted` / `TurnEnded`.
+      - Handles jail escape attempts (`attemptToGetOutOfJail`).
+      - Rolls dice (with doubles mechanic and three-doubles-to-jail rule).
+      - Moves players via `advancePlayerBy` / `advancePlayerToTile` / `advancePlayerToProperty` / `advancePlayerToRailroad`.
+      - Calls `Player.developProperties` then `Player.unmortgageProperties` after each movement.
+  - `goToJail(player, reason)` – sets jail state, emits `PlayerSentToJail`, and moves to `Jail` tile.
+  - `returnGetOutOfJailFreeCard(card)` – re-inserts card into appropriate deck.
 
-**Responsibilities:**
-- Maintains 40-tile board layout
-- Manages Chance and Community Chest decks
-- Executes game rounds
-- Player movement and tile interaction
+**File:** `board/Tile.kt`
 
-**Key Components:**
+- `sealed class Tile` with variants including:
+  - `Go`, `IncomeTax`, `LuxuryTax`, `FreeParking`, `Jail`, `GoToJail`.
+  - `Buyable` subclasses: `PropertyBuyable`, `RailroadBuyable`, `UtilityBuyable`.
+  - `Chance(side: Int)`, `CommunityChest(side: Int)`.
+- Each tile implements `onLanding(player, bank, board, rentOverride, eventBus)` to enforce rules.
+- Buyable landing behavior (confirmed in code):
+  - Determine owner:
+    - If owner is current player: no-op.
+    - If owner is other player:
+      - If mortgaged: no rent.
+      - Otherwise: calculate rent, collect via `Player.pay`, and emit `GameEvent.RentPaid`.
+    - If unowned:
+      - Calls `player.isBuying(deed)`; on `true`, calls `Bank.sellDeedToPlayer`.
+      - Auctions are **not implemented**; there are TODO comments indicating intended auctions in bank/tiles.
 
-**Tiles List (40 tiles):**
-```kotlin
-Go -> MediterraneanAvenue -> CommunityChest -> BalticAvenue -> IncomeTax -> ...
-```
+### 3.5 Bank
 
-**Decks:**
-- `chance: Deck<Card>` - 16 Chance cards
-- `communityChest: Deck<Card>` - 17 Community Chest cards
-- Both decks shuffle when depleted
+**File:** `board/Bank.kt`
 
-**Key Methods:**
+State:
 
-**executeRound(round: Int)**
-- Iterates through non-bankrupt players
-- Handles jail escape attempts
-- Manages dice rolling (including doubles)
-- Calls player.developProperties() after each roll
-- Calls player.unmortgageProperties() after development
-- Enforces three-consecutive-doubles rule
+- `availableHouses: Int = 32`, `availableHotels: Int = 12`.
+- `money: Int = 20580` (per post-2008 official sets). Comments indicate this is technically unbounded in rules.
+- `titleDeeds: MutableList<TitleDeed>` – stock of unsold deeds initialized from `TitleDeed.values`.
+- Optional `eventBus: EventBus?` for emitting financial and property events.
 
-**`advancePlayerBy(player, offset, collectSalary, rentOverride)`**
-- Moves player by offset tiles (can be negative)
-- Detects passing Go (only in forward direction)
-- Triggers tile landing behavior
-- Supports rent override for special card effects
+Key operations:
 
-**`advancePlayerToTile(player, tileClass, rentOverride)`**
-- Advances to next instance of tile type
-- Used by cards like "Advance to nearest Railroad"
+- **Cash flow:**
+  - `pay(amount, player, reason)` – bank to player transfer; emits `BankPaidPlayer`.
+  - `charge(amount, player, board, reason)` – player to bank transfer; if insufficient funds, calls `player.liquidateAssets` and possibly `player.declareBankruptcy(this, board)`; emits `PlayerChargedByBank`.
+- **Deeds:**
+  - `sellDeedToPlayer(deedClass, player, board)` – validates affordability; moves deed from bank inventory to `player.deeds`; emits `PropertyPurchased`.
+  - `mortgageDeed(deedClass, player)` – validates owner and no development; pays player `mortgageValue`; marks `isMortgaged`; emits `PropertyMortgaged`.
+  - `unmortgageDeed(deedClass, player, board)` – charges `ceil(mortgageValue * 1.1)`; clears `isMortgaged`; emits `PropertyUnmortgaged`.
+  - `transferMortgagedDeeds(deeds)` – returns deed set to bank; has TODO for triggering an immediate auction; no current event emission for transfers.
+- **Development:**
+  - `sellHouseToPlayer` / `sellHotelToPlayer` – enforce ownership, monopoly, even-building rules, token limits, and affordability; update `Development` and emit `HousePurchased`/`HotelPurchased`.
+  - `buyHouseFromPlayer` / `buyHotelFromPlayer` – reverse-operations, including hotel→4 houses; handle even-building rules and token stock; emit `HouseSold`/`HotelSold`.
 
-### 3.4 Bank
-**Location:** `board/Bank.kt`
+### 3.6 Deeds & Rent Calculation
 
-**State:**
-- `money: Int = 20580` - Total bank cash (per 2008+ rules)
-- `availableHouses: Int = 32` - Limited supply
-- `availableHotels: Int = 12` - Limited supply
-- `titleDeeds: MutableList<TitleDeed>` - Unsold properties
+**Files:** `deed/TitleDeed.kt`, `Property.kt`, `Railroad.kt`, `Utility.kt`, `ColourGroup.kt`
 
-**Key Methods:**
+- `TitleDeed`:
+  - Fields: `colourGroup`, `price`, `mortgageValue`, `isBuildable` (abstract), and `calculateRent(owner, board)`.
+  - Even-building helpers (Section 4.4): `addingHouseRespectsEvenBuildingRules`, `removingHouseRespectsEvenBuildingRules`, `addingOrRemovingHotelRespectsEvenBuildingRules`.
+- `Property` (22 instances):
+  - Fields include `buildingCost`, base rent, rent-by-house-count, hotel rent.
+  - Rent rules:
+    - If mortgaged: 0.
+    - If hotel: `rentHotel`.
+    - If 0 houses and monopoly: `rentNoHouse * 2`.
+    - Else: look up from `houseRents` by `numHouses`.
+- `Railroad` (4 instances):
+  - Rent based on count of **unmortgaged** railroads: 25/50/100/200.
+- `Utility` (2 instances):
+  - Rent = previous dice roll total × multiplier.
+  - 1 utility: 4×; 2 utilities: 10×.
+  - Special Chance cards can override multiplier via a `rentOverride` lambda in board movement/card handling.
 
-**`pay(amount, player, reason)`**
-- Bank pays player
-- Decreases bank money, increases player money
+### 3.7 Cards & Decks
 
-**`charge(amount, player, board, reason)`**
-- Player pays bank
-- Triggers `player.liquidateAssets()` if insufficient funds
-- Triggers `player.declareBankruptcy()` on `BankruptcyException`
+**Files:** `card/Card.kt`, `ChanceCard.kt`, `CommunityChestCard.kt`, `Deck.kt`
 
-**`sellDeedToPlayer(deedClass, player, board)`**
-- Validates player can afford deed
-- Removes deed from bank inventory
-- Adds deed to player's deeds with `Development()`
-
-**`sellHouseToPlayer(propertyClass, player, board)`**
-**`sellHotelToPlayer(propertyClass, player, board)`**
-- Validates monopoly ownership
-- Validates even building rules
-- Checks house/hotel supply
-- Updates player's `Development` state
-
-**`buyHouseFromPlayer(propertyClass, player)`**
-**`buyHotelFromPlayer(propertyClass, player)`**
-- Player receives half of building cost
-- Validates even building rules
-- Returns houses/hotels to bank supply
-
-**`mortgageDeed(deedClass, player)`**
-- Pays player the `mortgageValue`
-- Sets `Development.isMortgaged = true`
-- Cannot mortgage developed properties
-
-**unmortgageDeed(deedClass, player, board)**
-- Charges player `ceil(mortgageValue * 1.1)` (110%) to unmortgage
-- Validates: player owns property and property is mortgaged
-- May trigger player.liquidateAssets()
-- Sets `Development.isMortgaged = false`
-
-### 3.5 Title Deeds
-**Location:** `deed/`
-
-**TitleDeed (Abstract Base)**
-- `colourGroup: ColourGroup`
-- `price: Int`
-- `mortgageValue: Int`
-- `isBuildable: Boolean` (abstract)
-- `calculateRent(owner, board): Int` (abstract)
-
-**Property (22 instances)**
-- Buildable (houses/hotels)
-- Additional fields: `buildingCost`, rent schedule for 0-4 houses + hotel
-- Rent calculation:
-  - Mortgaged: $0
-  - Hotel: `rentHotel`
-  - 0 houses + monopoly: `rentNoHouse * 2`
-  - Otherwise: `houseRents[numHouses]`
-
-**Railroad (4 instances)**
-- Not buildable
-- Fixed price: $200, mortgage: $100
-- Rent based on count of unmortgaged railroads owned:
-  - 1: $25
-  - 2: $50
-  - 3: $100
-  - 4: $200
-
-**Utility (2 instances)**
-- Not buildable
-- Fixed price: $150, mortgage: $75
-- Rent: `dice.previousRoll().amount * multiplier`
-  - 1 utility: 4x
-  - 2 utilities: 10x
-
-**Even Building Rules (TitleDeed)**
-- `addingHouseRespectsEvenBuildingRules(player)`
-- `removingHouseRespectsEvenBuildingRules(player)`
-- `addingOrRemovingHotelRespectsEvenBuildingRules(player)`
-
-Rules:
-1. Houses must be built evenly across a monopoly
-2. Can add house if all properties have same count, OR target has minimum count
-3. Can remove house if target has maximum count
-4. Hotels require all properties in monopoly have 4 houses or a hotel
-
-### 3.6 Tiles
-**Location:** `board/Tile.kt`
-
-**Sealed Class Hierarchy:**
-- `Go` - Nothing special (unless house rules)
-- `Buyable` (abstract)
-  - `PropertyBuyable` - 22 properties
-  - `RailroadBuyable` - 4 railroads
-  - `UtilityBuyable` - 2 utilities
-- `CommunityChest` - Draw card (4 tiles)
-- `Chance` - Draw card (3 tiles)
-- `IncomeTax` - Pay `player.incomeTaxAmount()`
-- `LuxuryTax` - Pay $100
-- `Jail` - Just visiting vs. in jail
-- `FreeParking` - Nothing (unless house rules)
-- `GoToJail` - Sends player to jail
-
-**Buyable Landing Behavior:**
-1. Find owner (if any)
-2. If owned by self: no action
-3. If owned by other:
-   - If mortgaged: no rent
-   - Otherwise: calculate and pay rent
-4. If unowned:
-   - Offer to buy
-   - TODO: Trigger auction if declined
-
-### 3.7 Cards
-**Location:** `card/`
-
-**16 Chance Cards:**
-- `AdvanceToGo`, `AdvanceToProperty` (Illinois, St Charles, Boardwalk)
-- `AdvanceToRailroad` (Reading, nearest x2)
-- `AdvanceToNearestUtility`
-- `BankPaysYouDividend` ($50)
-- `GetOutOfJailFree`
-- `GoBackThreeSpaces`
-- `GoToJail`
-- `GeneralRepairs` ($25/house, $100/hotel)
-- `PoorTax` ($15)
-- `ChairmanOfTheBoard` (pay $50 to each player)
-- `BuildingAndLoan` ($150)
-
-**17 Community Chest Cards:**
-- `AdvanceToGo`
-- `BankErrorInYourFavour` ($200)
-- `DoctorsFees` ($50)
-- `SaleOfStock` ($50)
-- `GetOutOfJailFree`
-- `GoToJail`
-- `GrandOperaOpening` (collect $50 from each player)
-- `HolidayFundMatures` ($100)
-- `IncomeTaxRefund` ($20)
-- `YourBirthday` (collect $10 from each player)
-- `LifeInsurance` ($100)
-- `HospitalFees` ($50)
-- `SchoolFees` ($50)
-- `ConsultancyFees` ($25)
-- `StreetRepairs` ($40/house, $115/hotel)
-- `BeautyContest` ($10)
-- `Inheritance` ($100)
-
-**Card Implementation Pattern:**
-- Base class `Card` with `onDraw(player, bank, board)`
-- Subclasses: `BankPaysYou`, `YouPayBank`, `GetOutOfJailFreeCard`
-- Each card implements specific game effect
+- `Deck<Card>` manages shuffling, drawing, and reinserting cards.
+- `Card` sealed class with base `onDraw(player, bank, board)` behavior specialized in Chance and Community Chest subclasses.
+- Cards implement all standard 16 Chance and 17 Community Chest effects, including movement, payments between players, bank payouts, jail, and repairs.
+- `Board` uses `Card.GoToJail` and various Advance/nearest-utility/railroad cards to drive movement.
+- `GameEvent.CardDrawn` is emitted from card drawing paths with `deck` = "Chance" or "Community Chest".
 
 ### 3.8 Dice
-**Location:** `board/Dice.kt`
 
-- Two six-sided dice
-- Caches `previous: Roll` for utility rent calculation
-- `Roll` data class: `die1`, `die2`, `amount`, `isDoubles`, `highest`
+**File:** `board/Dice.kt`
+
+- Encapsulates two six-sided dice, plus:
+  - Tracks `previous: Roll` where `Roll` holds `die1`, `die2`, `amount`, `isDoubles`, `highest`.
+  - Used by utilities for rent.
 
 ---
 
 ## 4. Key Algorithms & Business Logic
 
-### 4.1 Property Development Algorithm
-**Location:** `Player.developProperties()`
+### 4.1 Property Development Strategy (`Player.developProperties`)
 
-**Strategy:** Aggressive development prioritizing highest-ROI properties
+Summary from implementation:
 
-**Algorithm:**
-```
-1. Filter deeds:
-   - Exclude hotels (cannot develop further)
-   - Include only Property instances (not railroads/utilities)
+- Filters owned deeds to developable properties: not already with hotel, type `Property`.
+- Derives owned colour groups and filters to those where `hasMonopoly` is true.
+- Within each monopoly group, filters to properties where `buildingCost < money` (no liquidation to develop).
+- Sorts candidate properties **descending by current rent** (`calculateRent`) as a heuristic for ROI.
+- Finds the first candidate that passes even-building rules:
+  - If current `numHouses == 4`, uses `addingOrRemovingHotelRespectsEvenBuildingRules`.
+  - Else uses `addingHouseRespectsEvenBuildingRules`.
+- If a candidate is found, builds **exactly one** building:
+  - `numHouses == 4` → `Bank.sellHotelToPlayer`.
+  - Otherwise → `Bank.sellHouseToPlayer`.
 
-2. Group by colour group where player has monopoly
+Characteristics and caveats:
 
-3. Filter affordable properties (buildingCost < money)
+- **Greedy**: always favors the property with highest current rent; no lookahead.
+- **Aggressive cash usage**: only requires `buildingCost < money`; no explicit reserve for future rent obligations.
+- **Single-building per call**: per dice roll/turn, at most one house or hotel.
+- No configuration or pluggable strategy object; overridden only by subclassing `Player`.
 
-4. Sort by descending current rent (proxy for ROI)
+### 4.2 Asset Liquidation Strategy (`Player.liquidateAssets`)
 
-5. Find first property that satisfies even building rules:
-   - If 4 houses: can add hotel?
-   - Otherwise: can add house?
+`liquidateAssets(requiredAmount, bank, board)` is a 3-phase looped algorithm:
 
-6. Execute development:
-   - 4 houses → buy hotel
-   - <4 houses → buy house
-```
+1. **Phase 1 – Mortgage non-monopoly properties**
+   - Filter deeds not in a monopoly.
+   - Within those, select eligible deeds via `selectDeedsToMortgage`:
+     - Exclude already mortgaged.
+     - Exclude developed properties (houses/hotel present).
+     - Sort descending by "distance from monopoly" (favor properties farthest from completing a set), then ascending by `mortgageValue`.
+   - Mortgage each in order using `Bank.mortgageDeed` until `money >= requiredAmount` or no more candidates.
 
-**Characteristics:**
-- **Greedy:** Develops highest-rent property first
-- **Aggressive:** Spends all available cash (leaves minimal reserves)
-- **One building per turn:** Only develops one property per call
+2. **Phase 2 – Sell buildings**
+   - Filter deeds that are `Property` and have houses or hotel.
+   - Sort by **ascending rent** (sell least valuable income sources first).
+   - For each, check even-building legality:
+     - If hotel: `addingOrRemovingHotelRespectsEvenBuildingRules`.
+     - Else: `removingHouseRespectsEvenBuildingRules`.
+   - Sell using `Bank.buyHotelFromPlayer` (hotels) or `Bank.buyHouseFromPlayer` (houses) until `money >= requiredAmount` or stock exhausted.
 
-**Known Issue (Line 166-167):**
-> "This is pretty aggressive - On round 27, Elmo spends all but $44 to build a house. Consider holding at least highest rent on the board in escrow."
+3. **Phase 3 – Mortgage monopolies**
+   - Now consider deeds in colour groups where the player still has a monopoly, again using `selectDeedsToMortgage`.
+   - Mortgage until funds are sufficient or no more deeds.
 
-### 4.2 Asset Liquidation Algorithm
-**Location:** `Player.liquidateAssets()`
+4. **Looping and termination**
+   - Phases 2 and 3 are wrapped in a `do { ... } while (!hasFullyLiquidatedAssets())` loop.
+   - `hasFullyLiquidatedAssets()` returns true if there are no deeds, or all remaining are mortgaged and undeveloped.
+   - If still short of `requiredAmount` after full liquidation, prints a message and throws `BankruptcyException`.
 
-**Goal:** Raise funds to cover debt while minimizing loss of future income
+This code is non-trivial (~60 lines) and commented as a candidate for refactoring into a separate strategy/utility.
 
-**Algorithm:**
-```
-1. PHASE 1: Mortgage non-monopoly properties
-   - Filter properties NOT in a monopoly
-   - Exclude already mortgaged
-   - Exclude properties with houses/hotels
-   - Sort by:
-     a. Descending properties needed to complete monopoly (prefer far-from-monopoly)
-     b. Ascending mortgage value (mortgage cheapest first)
-   - Mortgage until debt covered
-   
-2. PHASE 2: Sell buildings (iterative)
-   - Filter properties with houses or hotels
-   - Sort by ascending rent (sell lowest-rent buildings first)
-   - For each property:
-     a. If hotel: sell hotel → 4 houses (if even building rules allow)
-     b. If houses: sell one house (if even building rules allow)
-   - Continue until debt covered
-   
-3. PHASE 3: Mortgage monopoly properties
-   - Filter properties IN a monopoly
-   - Exclude mortgaged
-   - Exclude properties with buildings (should be cleared by Phase 2)
-   - Same sorting as Phase 1
-   - Mortgage until debt covered
-   
-4. Repeat Phases 2-3 until:
-   - Debt covered, OR
-   - All assets fully liquidated (throw BankruptcyException)
-```
+### 4.3 Even Building Rules
 
-**Strategy Rationale:**
-- Protect monopolies as long as possible (double rent, development potential)
-- Minimize income loss by selling lowest-rent buildings
-- Even building rules constrain which buildings can be sold
+Implemented in `TitleDeed` helpers and enforced in `Bank` and `Player` methods:
 
-### 4.3 Rent Calculation
+- Houses must be built as evenly as possible across a monopoly.
+- House addition is legal if:
+  - All properties in the monopoly have same house count, **or**
+  - The target property currently has the **minimum** house count.
+- House removal is legal only from the property with the **maximum** count.
+- Hotels require all properties in the monopoly have 4 houses or a hotel; analogous constraints apply when selling hotels.
 
-**Property Rent:**
-```kotlin
-if (mortgaged) 0
-else if (hotel) rentHotel
-else if (noHouses && hasMonopoly) rentNoHouse * 2
-else houseRents[numHouses]
-```
+These constraints are consulted by:
 
-**Railroad Rent:**
-- Count unmortgaged railroads owned
-- 1→$25, 2→$50, 3→$100, 4→$200
+- `Bank.sellHouseToPlayer`, `Bank.sellHotelToPlayer`.
+- `Bank.buyHouseFromPlayer`, `Bank.buyHotelFromPlayer`.
+- `Player.developProperties` when choosing a candidate property.
 
-**Utility Rent:**
-- `previousDiceRoll * multiplier`
-- 1 utility: 4x
-- 2 utilities: 10x
-- Special case: Some Chance cards override multiplier to 10x
+### 4.4 Jail & Turn Flow
 
-### 4.4 Even Building Rules
-**Location:** `TitleDeed.kt`
+From `Board.executeRound` and helpers:
 
-**House Addition:**
-- All properties in monopoly have same house count, OR
-- Target property has minimum house count
+- Players in jail at turn start:
+  - Attempt to use a GOOJF card (`Player.useGetOutOfJailFreeCard`) first; if used, card is returned to the appropriate deck and a `PlayerLeftJail` event is emitted with method `"used card"`.
+  - Else, if `Player.isPayingGetOutOfJailEarlyFee(config.getOutOfJailEarlyFeeAmount)` returns true, `Bank.charge` is called with that fee, jail status is cleared, and `PlayerLeftJail` is emitted with method `"paid fee"`.
+- Rolling:
+  - Dice rolled via `Dice.roll()`; each roll emits `GameEvent.DiceRolled`.
+  - If doubles are rolled while in jail, the player is released immediately, `PlayerLeftJail` emitted with method `"rolled doubles"`, and **no extra turn** is granted (doubles counter forced to 3).
+  - For non-jail doubles, up to 3 extra rolls are allowed; on the third consecutive doubles the player goes directly to jail via `goToJail("three consecutive doubles")` and their turn ends.
 
-**House Removal:**
-- Target property has maximum house count
+### 4.5 Bankruptcy Logic
 
-**Hotel Addition/Removal:**
-- All properties in monopoly have either 4 houses or a hotel
+- **To bank** (`Player.declareBankruptcy(bank, board)`):
+  - Requires `hasFullyLiquidatedAssets() == true`; otherwise throws an `IllegalStateException`.
+  - Charges remaining money to bank (via `Bank.charge`).
+  - Returns any GOOJF cards to decks.
+  - Calls `Bank.transferMortgagedDeeds` with all remaining deeds and clears `deeds`.
+  - Marks `isBankrupt = true`, prints a message, and emits `GameEvent.PlayerBankrupted` with creditor=`Bank` and `round = board.currentRound`.
 
-**Implementation:**
-- Count houses on each property in color group
-- Group by house count
-- Validate target property against min/max counts
+- **To another player** (`Player.declareBankruptcy(creditor: Player, bank, board)`):
+  - Also requires prior full liquidation.
+  - Transfers remaining cash and all GOOJF cards to creditor.
+  - Calculates **total mortgage fees** creditor will owe:
+    - For each mortgaged deed, if `creditor.shouldUnmortgageProperty` returns true, assumes creditor will unmortgage (110% fee).
+    - Otherwise charges a 10% mortgage assumption fee.
+  - If creditor cannot pay the total fees, attempts `creditor.liquidateAssets(totalMortgageFees, bank, board)`. On `BankruptcyException`:
+    - Logs cascading bankruptcy.
+    - Creditor declares bankruptcy to the bank.
+    - Original debtor then also bankrupts to the bank (money charged, deeds returned, cards returned), and a `PlayerBankrupted` event is emitted for debtor→bank.
+  - If creditor can afford fees:
+    - Transfers each deed to `creditor.deeds`.
+    - For each mortgaged deed:
+      - If creditor strategy indicates unmortgage, calls `Bank.unmortgageDeed` (emits `PropertyUnmortgaged`).
+      - Else charges 10% assumption fee via `Bank.charge`.
+  - Finally clears debtor deeds, marks bankrupt, prints, and emits `GameEvent.PlayerBankrupted` with creditor=`Player`.
+  - Attempting to transfer developed properties (houses/hotels > 0) throws `PropertyDevelopmentException`, enforcing the expectation that liquidation fully cleared development first.
 
 ---
 
-## 5. Testing Strategy
+## 5. Event System & Statistics
 
-### Testing Utilities
-**Location:** `TestUtils.kt`
+### 5.1 Event Model (`event` package)
 
-**Custom Assertions:**
-- `assertPlayerOnProperty(player, Property::class)`
-- `assertPlayerOnRailroad(player, Railroad::class)`
-- `assertPlayerOnUtility(player, Utility::class)`
-- `assertPlayerOn(player, Tile::class)`
-- `assertPlayerOnChance(player, side)`
-- `assertPlayerOnCommunityChest(player, side)`
+- `GameEvent` is a sealed class grouping **22 event types** into categories:
+  - **Movement:** `RoundStarted`, `TurnStarted`, `DiceRolled`, `PlayerMoved`, `TileLanded`, `TurnEnded`, `RoundEnded`.
+  - **Financial:** `BankPaidPlayer`, `PlayerChargedByBank`, `RentPaid`.
+  - **Property:** `PropertyPurchased`, `PropertyMortgaged`, `PropertyUnmortgaged`.
+  - **Development:** `HousePurchased`, `HotelPurchased`, `HouseSold`, `HotelSold`.
+  - **Jail:** `PlayerSentToJail`, `PlayerLeftJail` (`method` includes "rolled doubles" / "paid fee" / "used card").
+  - **Cards:** `CardDrawn` (`deck` field is "Chance" or "Community Chest").
+  - **Bankruptcy:** `PlayerBankrupted` (creditor is `Player` or `Bank`), `AssetTransferred` (currently unused by statistics, available for future granularity).
+  - **Game lifecycle:** `GameEnded`.
 
-**FakeDice:**
-```kotlin
-class FakeDice(private vararg val rolls: Roll) : Dice() {
-    var rollCount = 0
-    override fun roll(): Roll = rolls[rollCount++]
-}
-```
-- Enables deterministic testing
-- Tracks number of rolls executed
+### 5.2 EventBus
 
-### Test Characteristics
-- Uses JUnit 5 (`junit-jupiter` 6.0.1)
-- Kotlin test assertions
-- Heavy use of data class equality for validation
-- Seeded RNG for reproducible test scenarios
+`EventBus` is a simple synchronous dispatcher:
 
----
+- `register(listener)`, `unregister(listener)` mutate an internal list.
+- `emit(event)` iterates listeners in registration order and calls `onEvent`; listener exceptions are caught and logged to `System.err`.
+- No thread safety or asynchronous behavior; the system is single-threaded by design.
 
-## 6. Outstanding Features & TODOs
+Integration points (verified in constructors):
 
-### High Priority (Core Game)
+- `Monopoly` optionally constructs or accepts an `EventBus` and wires it to `Bank` and `Board`.
+- `Board` and `Tile` use `eventBus?.emit(...)` consistently, so **disabling** the event system is equivalent to passing `null` and has minimal overhead.
 
-**Property Auctions (Multiple locations)**
-- `Monopoly.kt:11` - "property auctions on decline to buy?"
-- `Tile.kt:69` - When player declines purchase
-- `Bank.kt:264` - When bankrupted player returns mortgaged deeds
-- `Bank.kt:94-95`, `172-174` - Houses/hotels can trigger auctions if multiple players want to build simultaneously
+### 5.3 Statistics Listener (`GameStatistics`)
 
-**Jail Payment Strategy (`Player.kt:110-111`)**
-- Current: Always pay if `money > feeAmount`
-- Should consider: Only pay if `money > highestRentOnBoard > $50`
-- Staying in jail can be strategically advantageous late-game
+`GameStatistics` implements `GameEventListener` and maintains in-memory collections:
 
-**Purchase Strategy (`Player.kt:141-142`)**
-- Current: Buy if `money > price`
-- Should consider:
-  - Reserve cash for rent obligations
-  - Prioritize completing monopolies
-  - May need to liquidate to complete strategic monopolies
+- Movement/landing, dice, financial, property, development, jail, card, and bankruptcy data structures.
+- A small amount of lifecycle state (game started/ended, total rounds, winner, endReason).
 
-**Development Strategy Refinement (`Player.kt:166-168`)**
-- Current: Spends almost all cash on development
-- Should: Hold highest rent on board in reserve
+`onEvent` dispatches each `GameEvent` to type-specific handlers that populate the relevant collections. Notably:
 
-**Trading Between Players (`Monopoly.kt:12`, `Board.kt:172`)**
-- Not implemented
-- Critical for strategic gameplay
-- Would enable monopoly formation through negotiation
+- `TileLanded` normalizes tile names such that buyable tiles are keyed by deed class name, while non-buyable by tile class name.
+- Financial events are converted to domain-specific records (`BankPayment`, `BankCharge`, `RentTransaction`).
+- Property and development events build transaction lists used later for per-player and per-colour-group aggregations.
+- `PlayerBankrupted` is the sole driver for bankruptcy statistics; `AssetTransferred` is intentionally ignored for now.
 
-### Medium Priority (Rules Accuracy)
+### 5.4 Statistics Snapshot & Report
 
-**Update to 2023 Rules (`Monopoly.kt:9`)**
-- Currently based on 2021 edition
-- Need to verify changes in 2023 edition
+- `snapshot(): StatisticsSnapshot` provides a read-only view of current statistics with primitive and collection fields, suitable for testing or mid-game inspection.
+- `generateReport(): StatisticsReport` builds a higher-level report:
+  - Derives list of **all players** that appear in any recorded transaction or event (rent, purchases, go passings, dice, jail, bankruptcies).
+  - Reconstructs **final property ownership** by applying purchases and `PlayerBankrupted` events (to players and bank); infers monopolies accordingly.
+  - Aggregates counts and derived metrics:
+    - `GameSummary` – rounds, winner, endReason, total players, bankruptcies.
+    - `PlayerStatistics` – rent paid/collected, property purchases, lists of purchased/obtained-via-bankruptcy properties, development counts, GO passes, doubles, jail visits, bankruptcy round, and color-group monopolies.
+    - `PropertyStatistics` – total purchases, mortgages, unmortgages, most expensive purchase, purchases per `ColourGroup`.
+    - `FinancialSummary` – totals and largest rent transaction plus average rent amount.
+    - `MovementStatistics` – dice roll counts/averages, doubles count, tile landing frequencies, most/least landed tile.
+    - `DevelopmentStatistics` – counts of houses/hotels built and sold, development transaction counts per `ColourGroup`, and most-developed group.
 
-**Bank Money Limit (`Bank.kt:21`)**
-- Per rules: "the bank can never run out of money"
-- Current implementation has fixed $20,580
-- May not matter for simulation purposes
+### 5.5 Formatting & Output
 
-**Old Edition Differences (`Bank.kt:20`)**
-- Pre-2008 sets had $15,140 in bank
-- Could be interesting variant to test
+`StatisticsFormatter` has two main entry points:
 
-**Rent Collection Attention Check (`Tile.kt:49-50`)**
-- Rules: Owner must ask for rent before second following player rolls
-- Could implement as probabilistic "attention" check
-- Would affect game dynamics
+- `formatConsole(report)` – human-readable multi-section text using box-style characters and section headers.
+- `formatJson(report)` – manual JSON string builder with nested structures for game summary, player statistics, financial summary, property statistics (subset), movement, and development statistics.
 
-### Low Priority (Simulation Features)
+Output selection is controlled by `Config.statisticsOutputFormat` (enum `CONSOLE` or `JSON`).
 
-**Statistics Collection (`Monopoly.kt:10`)**
-- Landing frequency by tile
-- Rounds until victory
-- Net worth deltas over time
-- Property ownership patterns
-- Development patterns
+### 5.6 Configuration Toggle
 
-**House Rules (`Monopoly.kt:13`, `44`)**
-- Free Parking pot
-- Double salary on landing Go
-- No auction on declined purchase
-- Build out of turn
-- Custom starting cash
-- Custom house/hotel limits
+Statistics are **opt-in**:
+
+- `Config.collectStatistics == false`:
+  - `Monopoly` constructs with `eventBus = null`.
+  - `gameStatistics` is `null`; `outputStatistics` returns immediately.
+- `Config.collectStatistics == true`:
+  - `Monopoly` constructs an `EventBus` and `GameStatistics`, registers the listener, and shares the bus with `Bank` and `Board`.
+
+This design keeps the base rules engine usable without statistics overhead.
 
 ---
 
-## 7. Known Issues & Edge Cases
+## 6. Testing, Tooling & Build
 
-### 7.1 Edge Cases
+### 6.1 Build & Dependencies
 
-**Doubles + Go to Jail Card (`BoardTest.kt:43-55`)**
-- Documented edge case in test comments
-- Player draws "Go to Jail" on first roll (doubles)
-- System grants another turn because of doubles
-- Player rolls doubles again and escapes jail
-- **Current behavior:** May be incorrect per official rules
-- **Needs clarification:** Should drawing "Go to Jail" card consume the doubles turn?
+- **Build system:** Gradle (Kotlin DSL), version 8.x.
+- **Test framework:** JUnit 5 (junit-jupiter).
+- **Kotlin reflection:** Used primarily for sealed-class instance enumeration of deeds and tiles.
 
-**Hotel Selling with House Shortage**
-- Bank must have 4 houses available to buy hotel from player
-- Creates interesting strategic scarcity
-- Correctly implemented in `Bank.buyHotelFromPlayer()`
+Typical commands (from `build.gradle.kts`):
 
----
+- `./gradlew test` – run test suite.
+- `./gradlew run` – run the main entry point (single game with fixed RNG seed).
+- `./gradlew build` – full build.
 
-## 8. Technical Debt & Improvement Opportunities
+### 6.2 Test Coverage (Qualitative)
 
-### 8.1 Code Duplication
+From the test package names and file list (no exact counts asserted here):
 
-**Deed Lookup Patterns**
-Repeated throughout `Bank.kt` and `Player.kt`:
-```kotlin
-val deed = player.deeds.keys.firstOrNull { it::class == deedClass }
-    ?: throw PropertyOwnershipException(...)
-```
-Could be extracted to `Player.getDeed(deedClass)` method.
+- **Core engine tests:**
+  - `MonopolyTest`, `PlayerTest`, `BoardTest`, `DiceTest`, `TileTest`, plus deed and card tests.
+- **Bank and deed tests:**
+  - `BankTest`, `PropertyTest`, `RailroadTest`, `UtilityTest`, `TitleDeedTest`, `ColourGroupTest`.
+- **Card tests:**
+  - `CardTest`, `ChanceCardTest`, `CommunityChestCardTest`, `DeckTest`, helper `CardTestUtils`.
+- **Event and statistics tests:**
+  - `event/EventBusTest`, `event/EventEmissionIntegrationTest`.
+  - `statistics/GameStatisticsTest`, `statistics/GameStatisticsIntegrationTest`, `MonopolyStatisticsIntegrationTest`.
 
-**Rent Override Lambda**
-- `advancePlayerBy()`, `advancePlayerToTile()`, `advancePlayerToProperty()`, `advancePlayerToRailroad()` all take `rentOverride` parameter
-- Only used by two Chance cards (AdvanceToNearestUtility, AdvanceToNearestRailroad)
-- Could be refactored to event system or card-specific hooks
+The suite appears to cover:
 
-### 8.2 Type Safety
-
-**KClass vs Type Parameters**
-Many methods take `KClass<out TitleDeed>` when they could use type parameters:
-```kotlin
-// Current
-fun sellDeedToPlayer(deedClass: KClass<out TitleDeed>, ...)
-
-// Could be
-fun <T : TitleDeed> sellDeedToPlayer(deedClass: KClass<T>, ...)
-```
-Would enable better compile-time type checking.
-
-### 8.3 Complexity
-
-**`Player.liquidateAssets()` (`Player.kt:192-252`)**
-- 60 lines, complex nested logic
-- Three phases with iteration
-- TODO comment acknowledges "this code can be tidied up"
-- Opportunity for:
-  - Extract phases to separate methods
-  - Create `LiquidationStrategy` class
-  - Improve testability
-
-**`Player.developProperties()` (`Player.kt:144-188`)**
-- 44 lines of chained functional operations
-- Multiple filters, maps, and sorts
-- Opportunity for:
-  - Extract candidate selection to separate method
-  - Create `DevelopmentStrategy` class
-  - Enable A/B testing different strategies
-
-### 8.4 Configuration
-
-**Config Underutilized**
-- `Config.kt` has one field (`getOutOfJailEarlyFeeAmount`)
-- `Monopoly.Config` has one field (`maxRounds`)
-- Many hardcoded values that should be configurable:
-  - Starting cash ($1500)
-  - Go salary ($200)
-  - Tax amounts
-  - Building limits
-  - Rent multipliers
-
-**Strategy Pattern for Player Behavior**
-- `Player.isBuying()`, `isPayingGetOutOfJailEarlyFee()`, `developProperties()` define AI behavior
-- Marked as `open` for overriding
-- Could be extracted to `PlayerStrategy` interface for:
-  - Multiple AI implementations
-  - Human player implementation
-  - Strategy comparison in simulation
-
-### 8.5 Testability
-
-**Missing Test Utilities**
-- No builder pattern for complex game states
-- No test fixtures for common scenarios (monopoly ownership, bankruptcy situations)
-- Each test manually constructs state
-
-**Test Data Class Equality**
-- Heavy reliance on data class `equals()`
-- Works well but can make failures less readable
-- Could benefit from custom matchers
-
-### 8.6 Observability
-
-**Logging**
-- All output via `println()`
-- Mixed responsibility (game state + debugging)
-- No structured logging
-- Difficult to:
-  - Suppress output in tests
-  - Parse game events programmatically
-  - Generate statistics
-
-**Event System**
-- No event bus or listener pattern
-- Statistics collection would require:
-  - Event emission on all game state changes
-  - Observer pattern for stat collectors
-  - Currently would require littering code with stat calls
-
-### 8.7 Performance
-
-**Reflection Usage**
-- Sealed class companion objects use reflection to enumerate instances
-- Called once during initialization, so minimal impact
-- Could be replaced with explicit lists if performance matters
-
-**Immutability**
-- Heavy use of mutable state (`var`, `MutableList`, `MutableMap`)
-- Appropriate for simulation but limits concurrency
-- Not a concern for current single-threaded Monte Carlo approach
+- Correctness of card and tile behavior.
+- Movement rules, dice behavior, and jail edge cases.
+- Development and even-building constraints.
+- Bankruptcy and liquidation paths, including exceptions.
+- Event emission for major flows.
+- End-to-end statistics collection and output formatting.
 
 ---
 
-## 9. Testing & Running
+## 7. Technical Debt & Known Gaps
 
-### Build System
-**Gradle 8.11.1** with Kotlin DSL
+This section lists issues that are clearly visible in code or TODO comments, not speculative future work.
 
-### Dependencies
-- `kotlin-stdlib`
-- `kotlin-reflect` (for sealed class enumeration)
-- `junit-jupiter` 6.0.1 (test framework)
+### 7.1 Rules & Gameplay
 
-### Commands
-```bash
-# Run tests
-./gradlew test
+- **Property auctions** are not implemented, despite explicit TODOs in `Monopoly.kt`, `Tile.kt`, and `Bank.transferMortgagedDeeds`.
+- **Player trading** is entirely absent (no API or logic for negotiated exchanges).
+- **House rules** are not supported; many potential variants are hard-coded to standard rules.
+- **Bank money limit** is modeled with a finite `money` field, despite rules stating the bank never runs out; whether this matters in practice is unclear without stress tests.
 
-# Run main game
-./gradlew run
+### 7.2 Strategy Abstraction
 
-# Build
-./gradlew build
-```
+- `Player` encodes both **rules** and **AI strategy** in the same class.
+- No explicit `PlayerStrategy` interface exists; custom strategies require subclassing `Player` and overriding several methods.
+- Development, purchase, and liquidation logic are not easily swappable or composable.
 
-### Main Entry Point
-**`main()` in `Monopoly.kt`:**
-- Creates 4 players (Elmo, Bert, Ernie, Cookie Monster)
-- Uses seeded RNG (seed=1) for reproducibility
-- Executes single game
-- Prints game log to console
+### 7.3 Configuration Underuse
 
----
+- Many important game parameters remain hard-coded:
+  - Starting cash ($1500), GO salary ($200), tax amounts, building limits, rent multipliers.
+- `Config` currently only exposes a small subset (max rounds, statistics toggles, jail fee).
 
-## 10. Future Enhancement Recommendations
+### 7.4 Observability & Logging
 
-### For Monte Carlo Simulation
+- Event system is present and well-integrated, but **general logging** still uses `println` on stdout.
+- No structured log levels or pluggable logger.
+- Tests may rely on console output for verification, which can make failures noisy.
 
-1. **Extract Player Strategy Interface**
-   ```kotlin
-   interface PlayerStrategy {
-       fun decidePurchase(deed: TitleDeed, player: Player): Boolean
-       fun developProperties(player: Player, bank: Bank, board: Board)
-       fun liquidationPriority(deeds: Map<TitleDeed, Development>): List<TitleDeed>
-   }
-   ```
+### 7.5 Algorithm Complexity
 
-2. **Implement Event System**
-   ```kotlin
-   interface GameEvent
-   data class PropertyPurchased(player: Player, deed: TitleDeed) : GameEvent
-   data class RentPaid(from: Player, to: Player, amount: Int) : GameEvent
-   // ... etc
-   ```
+- `Player.liquidateAssets` and `Player.developProperties` are complex, with nested functional transformations and multiple passes:
+  - Harder to reason about or reuse for alternative strategies.
+  - TODO comments acknowledge the need for tidying.
 
-3. **Statistics Collector**
-   ```kotlin
-   class GameStatistics : GameEventListener {
-       val landingCounts: Map<Tile, Int>
-       val propertyOwnershipDuration: Map<TitleDeed, List<Int>>
-       val playerNetWorthOverTime: Map<Player, List<Int>>
-   }
-   ```
+### 7.6 Concurrency & Scalability
 
-4. **Batch Simulation Runner**
-   ```kotlin
-   class MonopolySimulator(val config: SimulationConfig) {
-       fun runSimulation(iterations: Int): SimulationResults
-   }
-   ```
-
-5. **House Rules Configuration**
-   ```kotlin
-   data class HouseRules(
-       val freeParkingPot: Boolean = false,
-       val doubleGoSalary: Boolean = false,
-       val noAuctions: Boolean = false,
-       val buildOutOfTurn: Boolean = false
-   )
-   ```
-
-### For Code Quality
-
-1. **Extract Complex Algorithms**
-   - `LiquidationStrategy` class
-   - `DevelopmentStrategy` class
-   - `RentCalculator` class (consolidate all rent logic)
-
-2. **Improve Type Safety**
-   - Generic type parameters instead of `KClass`
-   - Sealed interfaces for player actions
-
-3. **Add Structured Logging**
-   - Replace `println()` with proper logging framework
-   - Support log levels and filtering
-   - Enable structured event logging
-
-4. **Create Test Fixtures**
-   - Game state builders
-   - Common scenario setups
-   - Assertion libraries
+- Entire system is intentionally **single-threaded**.
+- `EventBus` and stateful classes (`Player`, `Bank`, `Board`, `Deck`, etc.) are **not thread-safe**.
+- For Monte Carlo-style parallel simulations, each game instance must be fully isolated.
 
 ---
 
-## 11. References
+## 8. Future Directions (Grounded in Current Design)
 
-**Official Rules:**
-- Hasbro Official Rules: https://www.hasbro.com/common/instruct/00009.pdf
-- 2021 Edition ruleset (current implementation basis)
+These are natural extensions consistent with existing TODOs and architecture; they do *not* claim to be implemented.
 
-**Property Data:**
-- Monopoly Wiki: https://monopoly.fandom.com/wiki/List_of_Monopoly_Properties
-- Card listings: https://monopoly.fandom.com/wiki/Chance, https://monopoly.fandom.com/wiki/Community_Chest
+### 8.1 Strategy Abstraction
 
-**Additional Context:**
-- House bidding rules: https://boardgames.stackexchange.com/questions/25411/monopoly-houses-bidding
-- Bank money amounts: https://www.monopolyland.com/how-much-money-in-monopoly-set/
+- Introduce a `PlayerStrategy` interface to decouple decision-making from state:
+  - Purchase decisions, development ordering, liquidation priority, jail fee vs. staying, unmortgage behavior.
+- Allow plugging different strategies per player and across simulations.
+
+### 8.2 Auctions & Trading
+
+- Implement property auctions for:
+  - Declined purchases on landing.
+  - Deeds returned to bank on bankruptcy.
+- Add trading API on `Board`/`Monopoly` to allow inter-player negotiation.
+
+### 8.3 House Rules & Simulation Parameters
+
+- Extend `Config` with house-rule toggles and numeric parameters:
+  - Free Parking pot behavior, double GO salary, alternative starting cash, alternative bank stock, variable tax rules.
+- Parameterize building supplies, bank money behavior, and card decks for scenario testing.
+
+### 8.4 Monte Carlo Runner & Aggregated Stats
+
+- Build a `Simulator` component that:
+  - Runs many independent games, each with its own `Monopoly`, `Board`, `Bank`, `EventBus`, `GameStatistics`.
+  - Aggregates `StatisticsReport`s into higher-level distributions (win rate per strategy, average rounds, tile landing distributions, etc.).
+
+### 8.5 Logging & Tooling
+
+- Replace core `println` calls with a simple logging abstraction.
+- Optionally integrate with the event system to emit structured logs for critical state changes.
 
 ---
+
+## 9. Maintenance Notes
+
+- **Single source of truth for architecture:** this document should be treated as canonical over the older `TechnicalAnalysis.md` and `EventSystemGuide.md`. When code changes, update this file first.
+- **Tests as specification:** for tricky rules (edge cases with doubles, jail interactions, bankruptcy cascades), prefer reading the relevant tests alongside this document to understand intended behavior.
+- **Statistics evolution:** the current event and statistics design is flexible enough to support additional listeners (e.g., replay recorder, visualization) without touching core game logic; any new observability feature should try to build on `EventBus` rather than adding more ad-hoc logging.
