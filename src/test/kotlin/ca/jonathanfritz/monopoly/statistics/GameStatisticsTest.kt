@@ -344,4 +344,58 @@ internal class GameStatisticsTest {
         assertEquals(200, snapshot.totalBankPayments)
         assertEquals(1, snapshot.doublesCount[player2])
     }
+
+    @Test
+    fun `generateReport creates comprehensive report from statistics`() {
+        val medAvenue = Property.MediterraneanAvenue()
+        
+        // Setup game events
+        stats.onEvent(GameEvent.RoundStarted(1))
+        stats.onEvent(GameEvent.DiceRolled(player1, 3, 4, false))
+        stats.onEvent(GameEvent.PlayerMoved(player1, 0, 7, false))
+        stats.onEvent(GameEvent.TileLanded(player1, Tile.PropertyBuyable(Property.MediterraneanAvenue::class)))
+        stats.onEvent(GameEvent.PropertyPurchased(player1, medAvenue, 60))
+        stats.onEvent(GameEvent.BankPaidPlayer(player2, 200, "salary"))
+        stats.onEvent(GameEvent.RentPaid(player2, player1, 10, medAvenue))
+        stats.onEvent(GameEvent.RoundEnded(1))
+        stats.onEvent(GameEvent.GameEnded(player1, 1, "test"))
+
+        val report = stats.generateReport()
+
+        // Verify game summary
+        assertEquals(1, report.gameSummary.totalRounds)
+        assertEquals("Player1", report.gameSummary.winner)
+        assertEquals("test", report.gameSummary.endReason)
+        assertEquals(2, report.gameSummary.totalPlayers)
+        assertEquals(0, report.gameSummary.bankruptcies)
+
+        // Verify player statistics
+        assertEquals(2, report.playerStatistics.size)
+        val player1Stats = report.playerStatistics.find { it.playerName == "Player1" }
+        assertNotNull(player1Stats)
+        assertEquals(0, player1Stats!!.totalRentPaid)
+        assertEquals(10, player1Stats.totalRentCollected)
+        assertEquals(1, player1Stats.propertiesPurchased)
+
+        // Verify financial summary
+        assertEquals(10, report.financialSummary.totalRentPaid)
+        assertEquals(200, report.financialSummary.totalBankPayments)
+        assertNotNull(report.financialSummary.largestRentPayment)
+        assertEquals(10, report.financialSummary.largestRentPayment!!.amount)
+
+        // Verify movement statistics
+        assertEquals(1, report.movementStatistics.totalDiceRolls)
+        assertEquals(7.0, report.movementStatistics.averageDiceRoll)
+    }
+
+    @Test
+    fun `generateReport handles empty game`() {
+        val report = stats.generateReport()
+
+        assertEquals(0, report.gameSummary.totalRounds)
+        assertNull(report.gameSummary.winner)
+        assertEquals(0, report.playerStatistics.size)
+        assertEquals(0, report.financialSummary.totalRentPaid)
+        assertEquals(0.0, report.financialSummary.averageRentPerTransaction)
+    }
 }

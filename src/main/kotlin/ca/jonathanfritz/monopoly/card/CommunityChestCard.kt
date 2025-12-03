@@ -40,7 +40,7 @@ sealed class CommunityChestCard : Card() {
             bank: Bank,
             board: Board,
         ) {
-            board.players.filter { it != player }.forEach { other ->
+            board.players.filter { it != player && !it.isBankrupt() }.forEach { other ->
                 other.pay(50, player, bank, board, "for opera tickets on opening night")
             }
         }
@@ -59,7 +59,7 @@ sealed class CommunityChestCard : Card() {
             bank: Bank,
             board: Board,
         ) {
-            board.players.filter { it != player }.forEach { other ->
+            board.players.filter { it != player && !it.isBankrupt() }.forEach { other ->
                 other.pay(10, player, bank, board, "as a birthday gift")
             }
         }

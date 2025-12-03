@@ -147,7 +147,7 @@ sealed class ChanceCard : Card() {
             bank: Bank,
             board: Board,
         ) {
-            board.players.filter { it != player }.forEach { other ->
+            board.players.filter { it != player && !it.isBankrupt() }.forEach { other ->
                 player.pay(50, other, bank, board, "as Chairman of the Board")
             }
         }

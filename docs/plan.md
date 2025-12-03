@@ -451,7 +451,7 @@ All `eventBus` parameters will be nullable and default to `null`. This ensures:
 
 ## 6. Implementation Phases
 
-**Current Status:** ✅ Phase 1 Complete | ✅ Phase 2 Complete | ✅ Phase 3 Complete | 🔄 Phase 4 In Progress
+**Current Status:** ✅ Phase 1 Complete | ✅ Phase 2 Complete | ✅ Phase 3 Complete | ✅ Phase 4 Complete
 
 ### Phase 1: Foundation (Event Infrastructure) ✅ COMPLETE
 **Goal:** Create event system without disrupting existing functionality
@@ -574,7 +574,7 @@ All `eventBus` parameters will be nullable and default to `null`. This ensures:
 
 ---
 
-### Phase 4: Reporting & Output
+### Phase 4: Reporting & Output ✅ COMPLETE
 **Goal:** Format statistics into human-readable reports
 
 **Tasks:**
@@ -597,6 +597,44 @@ All `eventBus` parameters will be nullable and default to `null`. This ensures:
 - `StatisticsReport` with comprehensive game summary
 - Pretty-printed console output
 - Optional JSON output
+
+**Completion Summary (Dec 3, 2025):**
+- ✅ Created comprehensive `StatisticsReport` data classes with 7 sections
+- ✅ Implemented `GameStatistics.generateReport()` with derived metrics:
+  - Player aggregations (rent paid/collected, properties, development, jail, doubles)
+  - Property statistics (purchases by color group, most expensive)
+  - Financial summary (total rent, bank transactions, largest payment, averages)
+  - Movement statistics (dice rolls, most/least landed tiles)
+  - Development statistics (houses/hotels built/sold by color group)
+- ✅ Created `StatisticsFormatter` with console and JSON output:
+  - Console: Beautiful box-drawing characters, organized sections
+  - JSON: Valid JSON structure with null handling
+- ✅ Added config flags to standalone `Config` class (consolidated from nested class):
+  - `collectStatistics: Boolean = false` (opt-in)
+  - `statisticsOutputFormat: StatisticsOutputFormat = CONSOLE | JSON`
+  - Removed `BOTH` format option per user feedback
+- ✅ Integrated report generation in `Monopoly.executeGame()`:
+  - Auto-creates EventBus and GameStatistics when enabled
+  - Outputs report at game end (bankruptcy or max rounds)
+- ✅ Fixed bankruptcy event tracking:
+  - Refactored `Player` to accept `eventBus` via constructor injection (no mutation)
+  - Fixed `PlayerBankrupted` events to emit correctly with accurate counts
+  - Added safeguards against double-bankruptcy attempts
+  - Fixed cascading bankruptcy to filter out bankrupt players in card effects
+- ✅ Enhanced property reporting:
+  - Fixed "Most Landed Tile" to show specific property names (e.g., "ParkPlace") instead of generic types (e.g., "PropertyBuyable")
+  - Added "Monopolies Acquired" to player statistics with accurate tracking via bankruptcy transfers
+  - Added detailed property lists: "Properties Purchased" and "Properties Acquired via Bankruptcy"
+- ✅ Fixed unmortgage event tracking:
+  - Corrected `Player.declareBankruptcy()` to call `bank.unmortgageDeed()` instead of manually updating flags
+  - Now properly emits `PropertyUnmortgaged` events during bankruptcy transfers
+- ✅ Comprehensive test coverage:
+  - 2 unit tests for `generateReport()` (comprehensive and empty game)
+  - 4 tests for `StatisticsFormatter` (console, JSON, empty, nulls)
+  - 4 integration tests (console, JSON, disabled, bankruptcy tracking)
+  - Updated test fixtures for new property list fields
+- ✅ Fixed flaky `BoardTest.three consecutive doubles` test using seeded RNG
+- ✅ All 344 tests pass
 
 ---
 

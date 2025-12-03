@@ -119,7 +119,11 @@ class GameStatistics : GameEventListener {
     }
 
     private fun handleTileLanded(event: GameEvent.TileLanded) {
-        val tileName = event.tile::class.simpleName ?: "Unknown"
+        // For buyable tiles (properties, railroads, utilities), use the deed name instead of the tile type
+        val tileName = when (val tile = event.tile) {
+            is Tile.Buyable -> tile.deedClass.simpleName ?: "Unknown"
+            else -> tile::class.simpleName ?: "Unknown"
+        }
         tileLandings[tileName] = (tileLandings[tileName] ?: 0) + 1
     }
 
@@ -248,6 +252,181 @@ class GameStatistics : GameEventListener {
         winner = event.winner
         totalRounds = event.rounds
         endReason = event.reason
+    }
+
+    /**
+     * Generates a comprehensive statistics report with derived metrics.
+     * This includes aggregations, calculations, and formatted statistics for output.
+     */
+    fun generateReport(): StatisticsReport {
+        val snapshot = snapshot()
+        
+        // Build player statistics
+        val allPlayers = (rentPayments.map { it.payer } + 
+                         rentPayments.map { it.recipient } + 
+                         propertyPurchases.map { it.player } +
+                         goPassings.keys +
+                         doublesRolled.keys +
+                         jailSentEvents.map { it.player } +
+                         bankruptcies.map { it.player }).distinct()
+        
+        // Calculate final property ownership by tracking purchases and bankruptcy transfers
+        val propertyOwnership = mutableMapOf<TitleDeed, Player>()
+        val bankruptcyAcquisitions = mutableMapOf<Player, MutableList<TitleDeed>>()
+        
+        // Start with all purchases
+        propertyPurchases.forEach { purchase ->
+            propertyOwnership[purchase.deed] = purchase.player
+        }
+        
+        // Apply bankruptcy transfers and track what each player acquired
+        bankruptcies.forEach { bankruptcy ->
+            // When a player goes bankrupt, all their properties transfer to the creditor
+            if (bankruptcy.creditor is Player) {
+                val bankruptPlayer = bankruptcy.player
+                val creditor = bankruptcy.creditor
+                val deedsToTransfer = propertyOwnership.entries
+                    .filter { it.value == bankruptPlayer }
+                    .map { it.key }
+                    .toList()
+                deedsToTransfer.forEach { deed ->
+                    propertyOwnership[deed] = creditor
+                    bankruptcyAcquisitions.getOrPut(creditor) { mutableListOf() }.add(deed)
+                }
+            }
+            // If bankrupt to Bank, properties go to bank (removed from player ownership)
+            else {
+                val deedsToRemove = propertyOwnership.entries
+                    .filter { it.value == bankruptcy.player }
+                    .map { it.key }
+                    .toList()
+                deedsToRemove.forEach { propertyOwnership.remove(it) }
+            }
+        }
+        
+        val playerStats = allPlayers.map { player ->
+            // Calculate monopolies based on final ownership
+            val playerFinalDeeds = propertyOwnership.filter { it.value == player }.keys
+            val playerDeedClasses = playerFinalDeeds.map { it::class }.toSet()
+            val monopolies = ColourGroup.entries.filter { colorGroup ->
+                val allDeedsInGroup = colorGroup.titleDeeds().keys
+                // Player has monopoly if they own all deeds in this color group
+                allDeedsInGroup.isNotEmpty() && allDeedsInGroup.all { deedClass -> deedClass in playerDeedClasses }
+            }
+            
+            // Get list of properties purchased directly
+            val purchasedList = propertyPurchases
+                .filter { it.player == player }
+                .map { it.deed::class.simpleName ?: "Unknown" }
+            
+            // Get list of properties acquired via bankruptcy
+            val bankruptcyList = bankruptcyAcquisitions[player]
+                ?.map { it::class.simpleName ?: "Unknown" }
+                ?: emptyList()
+            
+            PlayerStatistics(
+                playerName = player.name,
+                totalRentPaid = rentPayments.filter { it.payer == player }.sumOf { it.amount },
+                totalRentCollected = rentPayments.filter { it.recipient == player }.sumOf { it.amount },
+                propertiesPurchased = propertyPurchases.count { it.player == player },
+                propertiesPurchasedList = purchasedList,
+                propertiesAcquiredViaBankruptcy = bankruptcyList,
+                totalPropertySpending = propertyPurchases.filter { it.player == player }.sumOf { it.price },
+                housesBuilt = housePurchases.count { it.player == player },
+                hotelsBuilt = hotelPurchases.count { it.player == player },
+                timesPassedGo = goPassings[player] ?: 0,
+                doublesRolled = doublesRolled[player] ?: 0,
+                jailVisits = jailSentEvents.count { it.player == player },
+                bankruptcyRound = bankruptcies.find { it.player == player }?.round,
+                monopoliesAcquired = monopolies,
+            )
+        }
+        
+        // Build property statistics
+        val mostExpensiveProperty = propertyPurchases.maxByOrNull { it.price }?.let {
+            PropertyInfo(it.deed::class.simpleName ?: "Unknown", it.price)
+        }
+        
+        val propertiesByColorGroup = propertyPurchases
+            .groupBy { it.deed.colourGroup }
+            .mapValues { it.value.size }
+        
+        val propStats = PropertyStatistics(
+            totalPurchases = propertyPurchases.size,
+            totalMortgages = mortgages.size,
+            totalUnmortgages = unmortgages.size,
+            mostExpensiveProperty = mostExpensiveProperty,
+            propertiesByColorGroup = propertiesByColorGroup,
+        )
+        
+        // Build financial summary
+        val largestRent = rentPayments.maxByOrNull { it.amount }?.let {
+            RentInfo(it.payer.name, it.recipient.name, it.amount, it.property::class.simpleName ?: "Unknown")
+        }
+        
+        val avgRent = if (rentPayments.isNotEmpty()) {
+            rentPayments.sumOf { it.amount }.toDouble() / rentPayments.size
+        } else {
+            0.0
+        }
+        
+        val financialSummary = FinancialSummary(
+            totalRentPaid = snapshot.totalRentPaid,
+            totalBankPayments = snapshot.totalBankPayments,
+            totalBankCharges = snapshot.totalBankCharges,
+            largestRentPayment = largestRent,
+            averageRentPerTransaction = avgRent,
+        )
+        
+        // Build movement statistics
+        val mostLanded = tileLandings.maxByOrNull { it.value }?.let {
+            TileInfo(it.key, it.value)
+        }
+        
+        val leastLanded = tileLandings.minByOrNull { it.value }?.let {
+            TileInfo(it.key, it.value)
+        }
+        
+        val movementStats = MovementStatistics(
+            totalDiceRolls = snapshot.totalDiceRolls,
+            averageDiceRoll = snapshot.averageDiceRoll,
+            totalDoubles = doublesRolled.values.sum(),
+            tileLandingFrequency = snapshot.tileLandings,
+            mostLandedTile = mostLanded,
+            leastLandedTile = leastLanded,
+        )
+        
+        // Build development statistics
+        val mostDeveloped = snapshot.developmentByColorGroup.maxByOrNull { it.value }?.let {
+            ColorGroupInfo(it.key, it.value)
+        }
+        
+        val devStats = DevelopmentStatistics(
+            totalHousesBuilt = snapshot.totalHousesPurchased,
+            totalHotelsBuilt = snapshot.totalHotelsPurchased,
+            totalHousesSold = snapshot.totalHousesSold,
+            totalHotelsSold = snapshot.totalHotelsSold,
+            developmentByColorGroup = snapshot.developmentByColorGroup,
+            mostDevelopedColorGroup = mostDeveloped,
+        )
+        
+        // Build game summary
+        val gameSummary = GameSummary(
+            totalRounds = snapshot.totalRounds,
+            winner = snapshot.winner?.name,
+            endReason = snapshot.endReason,
+            totalPlayers = allPlayers.size,
+            bankruptcies = snapshot.totalBankruptcies,
+        )
+        
+        return StatisticsReport(
+            gameSummary = gameSummary,
+            playerStatistics = playerStats,
+            propertyStatistics = propStats,
+            financialSummary = financialSummary,
+            movementStatistics = movementStats,
+            developmentStatistics = devStats,
+        )
     }
 
     /**

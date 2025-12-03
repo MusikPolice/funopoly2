@@ -287,6 +287,10 @@ open class Player(
         bank: Bank,
         board: Board,
     ) {
+        if (isBankrupt) {
+            throw IllegalStateException("$name is already bankrupt and cannot declare bankruptcy again")
+        }
+        
         if (!hasFullyLiquidatedAssets()) {
             throw IllegalStateException("$name has declared bankruptcy without first liquidating their assets")
         }
@@ -315,9 +319,15 @@ open class Player(
         bank: Bank,
         board: Board,
     ) {
+        if (isBankrupt) {
+            throw IllegalStateException("$name is already bankrupt and cannot declare bankruptcy again")
+        }
+        
         if (!hasFullyLiquidatedAssets()) {
             throw IllegalStateException("$name has declared bankruptcy without first liquidating their assets")
         }
+
+        val netWorthAtBankruptcy = netWorth()
 
         // 1. Transfer cash
         creditor.money += this.money
@@ -348,8 +358,22 @@ open class Player(
             } catch (_: BankruptcyException) {
                 // Cascading bankruptcy: creditor can't afford to receive assets
                 println("\t\t${creditor.name} cannot afford to receive ${this.name}'s assets")
+                
+                // Creditor bankrupts to bank
                 creditor.declareBankruptcy(bank, board)
-                this.declareBankruptcy(bank, board)
+                
+                // Original bankrupt player also bankrupts to bank (change creditor from player to bank)
+                // Transfer remaining assets to bank instead of creditor
+                bank.charge(this.money, this, board, "in the bankruptcy settlement")
+                while (hasGetOutOfJailFreeCard()) board.returnGetOutOfJailFreeCard(this.getOutOfJailFreeCards.removeAt(0))
+                bank.transferMortgagedDeeds(this.deeds.keys)
+                this.deeds.clear()
+                
+                isBankrupt = true
+                println("\t\t$name is bankrupt!")
+                
+                // Emit bankruptcy to bank, not to the original creditor
+                eventBus?.emit(GameEvent.PlayerBankrupted(this, bank, board.currentRound, netWorthAtBankruptcy))
                 return
             }
         }
@@ -366,13 +390,14 @@ open class Player(
                 )
             }
 
+            // Transfer the deed first
+            creditor.deeds[deed] = development
+            
             if (development.isMortgaged) {
                 // Creditor must decide: unmortgage or assume
                 if (creditor.shouldUnmortgageProperty(deed, deed.mortgageValue)) {
-                    // Unmortgage: pay 110% of mortgage value
-                    val unmortgageCost = ceil(deed.mortgageValue * 1.1).toInt()
-                    bank.charge(unmortgageCost, creditor, board, "to unmortgage ${deed::class.simpleName}")
-                    development.isMortgaged = false
+                    // Unmortgage: pay 110% and emit event
+                    bank.unmortgageDeed(deed::class, creditor, board)
                 } else {
                     // Assume mortgage: pay 10% fee
                     val assumptionFee = ceil(deed.mortgageValue * 0.1).toInt()
@@ -380,8 +405,6 @@ open class Player(
                     // development.isMortgaged remains true
                 }
             }
-            // Transfer the deed
-            creditor.deeds[deed] = development
         }
 
         // 6. Clear bankrupt player's deeds
@@ -391,7 +414,7 @@ open class Player(
         println("\t\t$name is bankrupt!")
 
         // emit bankruptcy event
-        eventBus?.emit(GameEvent.PlayerBankrupted(this, creditor, board.currentRound, 0))
+        eventBus?.emit(GameEvent.PlayerBankrupted(this, creditor, board.currentRound, netWorthAtBankruptcy))
     }
 
     private fun Map<TitleDeed, Development>.selectDeedsToMortgage(): List<TitleDeed> =

@@ -2,6 +2,7 @@
 
 package ca.jonathanfritz.monopoly.statistics
 
+import ca.jonathanfritz.monopoly.Config
 import ca.jonathanfritz.monopoly.Monopoly
 import ca.jonathanfritz.monopoly.Player
 import ca.jonathanfritz.monopoly.event.EventBus
@@ -29,7 +30,7 @@ internal class GameStatisticsIntegrationTest {
             players = players,
             rng = Random(42),
             eventBus = eventBus,
-            config = Monopoly.Config(maxRounds = 10),
+            config = Config(maxRounds = 10),
         )
 
         game.executeGame()
@@ -72,7 +73,7 @@ internal class GameStatisticsIntegrationTest {
             players = players,
             rng = Random(123),
             eventBus = eventBus,
-            config = Monopoly.Config(maxRounds = 20),
+            config = Config(maxRounds = 20),
         )
 
         game.executeGame()
@@ -106,7 +107,7 @@ internal class GameStatisticsIntegrationTest {
             players = players,
             rng = Random(999),
             eventBus = eventBus,
-            config = Monopoly.Config(maxRounds = 50),
+            config = Config(maxRounds = 50),
         )
 
         game.executeGame()
@@ -140,7 +141,7 @@ internal class GameStatisticsIntegrationTest {
             players = players,
             rng = Random(777),
             eventBus = eventBus,
-            config = Monopoly.Config(maxRounds = 30),
+            config = Config(maxRounds = 30),
         )
 
         game.executeGame()
@@ -175,7 +176,7 @@ internal class GameStatisticsIntegrationTest {
             players = players,
             rng = Random(555),
             eventBus = eventBus,
-            config = Monopoly.Config(maxRounds = 25),
+            config = Config(maxRounds = 25),
         )
 
         game.executeGame()
@@ -214,7 +215,7 @@ internal class GameStatisticsIntegrationTest {
             players = players,
             rng = Random(321),
             eventBus = eventBus,
-            config = Monopoly.Config(maxRounds = 30),
+            config = Config(maxRounds = 30),
         )
 
         game.executeGame()
@@ -258,7 +259,7 @@ internal class GameStatisticsIntegrationTest {
             players = players,
             rng = Random(888),
             eventBus = eventBus,
-            config = Monopoly.Config(maxRounds = 40),
+            config = Config(maxRounds = 40),
         )
 
         game.executeGame()
@@ -287,7 +288,7 @@ internal class GameStatisticsIntegrationTest {
             players = players,
             rng = Random(42),
             eventBus = eventBus,
-            config = Monopoly.Config(maxRounds = 5),
+            config = Config(maxRounds = 5),
         )
 
         // Take snapshot before game starts
@@ -322,7 +323,7 @@ internal class GameStatisticsIntegrationTest {
             players = players,
             rng = Random(666),
             eventBus = eventBus,
-            config = Monopoly.Config(maxRounds = 20),
+            config = Config(maxRounds = 20),
         )
 
         game.executeGame()

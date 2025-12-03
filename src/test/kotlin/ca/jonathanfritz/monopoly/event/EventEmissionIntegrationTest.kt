@@ -2,6 +2,7 @@
 
 package ca.jonathanfritz.monopoly.event
 
+import ca.jonathanfritz.monopoly.Config
 import ca.jonathanfritz.monopoly.Monopoly
 import ca.jonathanfritz.monopoly.Player
 import ca.jonathanfritz.monopoly.board.Bank
@@ -27,7 +28,7 @@ internal class EventEmissionIntegrationTest {
                 players = players,
                 rng = Random(42),
                 eventBus = eventBus,
-                config = Monopoly.Config(maxRounds = 2),
+                config = Config(maxRounds = 2),
             )
 
         game.executeGame()
@@ -53,7 +54,7 @@ internal class EventEmissionIntegrationTest {
                 players = players,
                 rng = Random(42),
                 eventBus = eventBus,
-                config = Monopoly.Config(maxRounds = 1),
+                config = Config(maxRounds = 1),
             )
 
         game.executeGame()
@@ -78,7 +79,7 @@ internal class EventEmissionIntegrationTest {
                 players = players,
                 rng = Random(42),
                 eventBus = eventBus,
-                config = Monopoly.Config(maxRounds = 1),
+                config = Config(maxRounds = 1),
             )
 
         game.executeGame()
@@ -106,7 +107,7 @@ internal class EventEmissionIntegrationTest {
                 players = players,
                 rng = Random(42),
                 eventBus = eventBus,
-                config = Monopoly.Config(maxRounds = 1),
+                config = Config(maxRounds = 1),
             )
 
         game.executeGame()
@@ -134,7 +135,7 @@ internal class EventEmissionIntegrationTest {
                 players = players,
                 rng = Random(42),
                 eventBus = eventBus,
-                config = Monopoly.Config(maxRounds = 1),
+                config = Config(maxRounds = 1),
             )
 
         game.executeGame()
@@ -160,7 +161,7 @@ internal class EventEmissionIntegrationTest {
                 players = players,
                 rng = Random(42),
                 eventBus = eventBus,
-                config = Monopoly.Config(maxRounds = 5),
+                config = Config(maxRounds = 5),
             )
 
         game.executeGame()
@@ -187,7 +188,7 @@ internal class EventEmissionIntegrationTest {
                 players = players,
                 rng = Random(123),
                 eventBus = eventBus,
-                config = Monopoly.Config(maxRounds = 10),
+                config = Config(maxRounds = 10),
             )
 
         game.executeGame()
@@ -216,7 +217,7 @@ internal class EventEmissionIntegrationTest {
                 players = players,
                 rng = Random(999),
                 eventBus = eventBus,
-                config = Monopoly.Config(maxRounds = 20),
+                config = Config(maxRounds = 20),
             )
 
         game.executeGame()
@@ -245,7 +246,7 @@ internal class EventEmissionIntegrationTest {
                 players = players,
                 rng = Random(42),
                 eventBus = eventBus,
-                config = Monopoly.Config(maxRounds = 2),
+                config = Config(maxRounds = 2),
             )
 
         game.executeGame()
@@ -315,7 +316,7 @@ internal class EventEmissionIntegrationTest {
                 players = players,
                 rng = Random(42),
                 eventBus = eventBus,
-                config = Monopoly.Config(maxRounds = 1),
+                config = Config(maxRounds = 1),
             )
 
         game.executeGame()
