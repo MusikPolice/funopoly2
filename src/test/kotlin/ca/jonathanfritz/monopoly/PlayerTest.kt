@@ -12,6 +12,9 @@ import ca.jonathanfritz.monopoly.deed.Railroad
 import ca.jonathanfritz.monopoly.deed.TitleDeed
 import ca.jonathanfritz.monopoly.deed.Utility
 import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
+import ca.jonathanfritz.monopoly.strategy.DefaultStrategy
+import ca.jonathanfritz.monopoly.strategy.PlayerStrategy
+import ca.jonathanfritz.monopoly.strategy.PropertyValuation
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -284,13 +287,17 @@ internal class PlayerTest {
     @Test
     fun `isBuying returns false if player cannot afford deed`() {
         val player = Player("Ernie")
-        assertFalse(player.isBuying(MediterraneanAvenue()))
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        assertFalse(player.isBuying(MediterraneanAvenue(), bank, board))
     }
 
     @Test
     fun `isBuying returns true if player can afford deed`() {
         val player = Player("Ernie", money = 100)
-        assertTrue(player.isBuying(MediterraneanAvenue()))
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        assertTrue(player.isBuying(MediterraneanAvenue(), bank, board))
     }
 
     @Test
@@ -448,13 +455,7 @@ internal class PlayerTest {
         val player1 = Player("Player 1", money = 10)
         player1.deeds[BalticAvenue()] = Player.Development(isMortgaged = true)
 
-        val player2 =
-            object : Player("Player 2", money = 500) {
-                override fun shouldUnmortgageProperty(
-                    deed: TitleDeed,
-                    mortgageValue: Int,
-                ): Boolean = true
-            }
+        val player2 = Player("Player 2", money = 500, strategy = AlwaysUnmortgageStrategy())
         val (_, _, bankBoard) = createBankruptcyScenario(player1, player2)
         val (bank, board) = bankBoard
 
@@ -478,13 +479,7 @@ internal class PlayerTest {
         val player1 = Player("Player 1", money = 20)
         player1.deeds[BalticAvenue()] = Player.Development(isMortgaged = true)
 
-        val player2 =
-            object : Player("Player 2", money = 500) {
-                override fun shouldUnmortgageProperty(
-                    deed: TitleDeed,
-                    mortgageValue: Int,
-                ): Boolean = false
-            }
+        val player2 = Player("Player 2", money = 500, strategy = NeverUnmortgageStrategy())
         val (_, _, bankBoard) = createBankruptcyScenario(player1, player2)
         val (bank, board) = bankBoard
 
@@ -511,15 +506,11 @@ internal class PlayerTest {
         player1.deeds[OrientalAvenue()] = Player.Development()
         player1.deeds[VermontAvenue()] = Player.Development(isMortgaged = true)
 
-        val player2 =
-            object : Player("Player 2", money = 1000) {
-                override fun shouldUnmortgageProperty(
-                    deed: TitleDeed,
-                    mortgageValue: Int,
-                ): Boolean {
-                    return deed is BalticAvenue // Unmortgage Baltic only
-                }
-            }
+        val player2 = Player(
+            "Player 2",
+            money = 1000,
+            strategy = ConditionalUnmortgageStrategy { deed -> deed is BalticAvenue }
+        )
         val (_, _, bankBoard) = createBankruptcyScenario(player1, player2)
         val (bank, board) = bankBoard
 
@@ -592,13 +583,7 @@ internal class PlayerTest {
         val player1 = Player("Player 1", money = 10)
         player1.deeds[BalticAvenue()] = Player.Development(isMortgaged = true)
 
-        val player2 =
-            object : Player("Player 2", money = 20) {
-                override fun shouldUnmortgageProperty(
-                    deed: TitleDeed,
-                    mortgageValue: Int,
-                ): Boolean = true
-            }
+        val player2 = Player("Player 2", money = 20, strategy = AlwaysUnmortgageStrategy())
         player2.deeds[ConnecticutAvenue()] = Player.Development()
 
         val (_, _, bankBoard) = createBankruptcyScenario(player1, player2)
@@ -625,13 +610,7 @@ internal class PlayerTest {
         player1.deeds[ParkPlace()] = Player.Development(isMortgaged = true)
         player1.deeds[Boardwalk()] = Player.Development(isMortgaged = true)
 
-        val player2 =
-            object : Player("Player 2", money = 50) {
-                override fun shouldUnmortgageProperty(
-                    deed: TitleDeed,
-                    mortgageValue: Int,
-                ): Boolean = true
-            }
+        val player2 = Player("Player 2", money = 50, strategy = AlwaysUnmortgageStrategy())
         val (_, _, bankBoard) = createBankruptcyScenario(player1, player2)
         val (bank, board) = bankBoard
 
@@ -654,13 +633,7 @@ internal class PlayerTest {
 
     @Test
     fun `unmortgageProperties unmortgages when strategy approves`() {
-        val player =
-            object : Player("Player", money = 200) {
-                override fun shouldUnmortgageProperty(
-                    deed: TitleDeed,
-                    mortgageValue: Int,
-                ): Boolean = true
-            }
+        val player = Player("Player", money = 200, strategy = AlwaysUnmortgageStrategy())
         player.deeds[BalticAvenue()] = Player.Development(isMortgaged = true)
         player.deeds[OrientalAvenue()] = Player.Development(isMortgaged = true)
 
@@ -678,13 +651,7 @@ internal class PlayerTest {
 
     @Test
     fun `unmortgageProperties skips when strategy denies`() {
-        val player =
-            object : Player("Player", money = 200) {
-                override fun shouldUnmortgageProperty(
-                    deed: TitleDeed,
-                    mortgageValue: Int,
-                ): Boolean = false
-            }
+        val player = Player("Player", money = 200, strategy = NeverUnmortgageStrategy())
         player.deeds[BalticAvenue()] = Player.Development(isMortgaged = true)
 
         val bank = Bank()
@@ -794,5 +761,33 @@ internal class PlayerTest {
 
     private fun assertPlayerIsNotBankrupt(player: Player) {
         assertFalse(player.isBankrupt())
+    }
+
+    // Test-specific strategies for controlling unmortgage behavior
+    private class AlwaysUnmortgageStrategy : DefaultStrategy() {
+        override fun shouldUnmortgageProperty(
+            deed: TitleDeed,
+            unmortgageCost: Int,
+            player: Player,
+            board: Board
+        ): Boolean = true
+    }
+
+    private class NeverUnmortgageStrategy : DefaultStrategy() {
+        override fun shouldUnmortgageProperty(
+            deed: TitleDeed,
+            unmortgageCost: Int,
+            player: Player,
+            board: Board
+        ): Boolean = false
+    }
+
+    private class ConditionalUnmortgageStrategy(private val shouldUnmortgage: (TitleDeed) -> Boolean) : DefaultStrategy() {
+        override fun shouldUnmortgageProperty(
+            deed: TitleDeed,
+            unmortgageCost: Int,
+            player: Player,
+            board: Board
+        ): Boolean = shouldUnmortgage(deed)
     }
 }

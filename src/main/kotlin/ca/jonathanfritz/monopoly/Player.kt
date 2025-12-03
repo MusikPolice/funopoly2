@@ -10,6 +10,8 @@ import ca.jonathanfritz.monopoly.event.EventBus
 import ca.jonathanfritz.monopoly.event.GameEvent
 import ca.jonathanfritz.monopoly.exception.BankruptcyException
 import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
+import ca.jonathanfritz.monopoly.strategy.DefaultStrategy
+import ca.jonathanfritz.monopoly.strategy.PlayerStrategy
 import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.reflect.KClass
@@ -36,6 +38,9 @@ open class Player(
 
     // optional event bus for statistics collection
     private val eventBus: EventBus? = null,
+
+    // strategy for decision-making (defaults to original behavior)
+    private val strategy: PlayerStrategy = DefaultStrategy(),
 ) {
     // true if the player is in jail (as opposed to just visiting)
     var remainingTurnsInJail = 0
@@ -142,16 +147,17 @@ open class Player(
         other.money += amount
     }
 
-    // for now, every player buys up every property they can
-    // TODO: in the future, consider the amount of money on hand, maybe liquidate to raise money to complete a monopoly, etc
-    fun isBuying(deed: TitleDeed): Boolean = money > deed.price
+    fun isBuying(deed: TitleDeed, bank: Bank, board: Board): Boolean =
+        strategy.shouldBuyProperty(deed, this, bank, board)
 
-    // strategy for deciding whether to unmortgage a property when receiving it from a bankrupt player
-    // only unmortgage if we have comfortable cash reserves (2.2x the cost)
-    open fun shouldUnmortgageProperty(
+    fun shouldUnmortgageProperty(
         deed: TitleDeed,
         mortgageValue: Int,
-    ): Boolean = money >= mortgageValue * 2.2
+        board: Board,
+    ): Boolean {
+        val unmortgageCost = ceil(mortgageValue * 1.1).toInt()
+        return strategy.shouldUnmortgageProperty(deed, unmortgageCost, this, board)
+    }
 
     fun developProperties(
         bank: Bank,
@@ -207,7 +213,7 @@ open class Player(
             .filter { (_, development) -> development.isMortgaged }
             .filter { (deed, _) ->
                 // only unmortgage if strategy says we should
-                shouldUnmortgageProperty(deed, deed.mortgageValue)
+                shouldUnmortgageProperty(deed, deed.mortgageValue, board)
             }.forEach { (deed, _) ->
                 bank.unmortgageDeed(deed::class, this, board)
             }
@@ -344,7 +350,7 @@ open class Player(
                 .filter { it.isMortgaged }
                 .sumOf { development ->
                     val deed = this.deeds.keys.first { this.deeds[it] == development }
-                    if (creditor.shouldUnmortgageProperty(deed, deed.mortgageValue)) {
+                    if (creditor.shouldUnmortgageProperty(deed, deed.mortgageValue, board)) {
                         ceil(deed.mortgageValue * 1.1).toInt() // Unmortgage cost
                     } else {
                         ceil(deed.mortgageValue * 0.1).toInt() // Assumption fee
@@ -395,7 +401,7 @@ open class Player(
             
             if (development.isMortgaged) {
                 // Creditor must decide: unmortgage or assume
-                if (creditor.shouldUnmortgageProperty(deed, deed.mortgageValue)) {
+                if (creditor.shouldUnmortgageProperty(deed, deed.mortgageValue, board)) {
                     // Unmortgage: pay 110% and emit event
                     bank.unmortgageDeed(deed::class, creditor, board)
                 } else {

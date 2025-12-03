@@ -69,7 +69,7 @@ sealed class Tile {
                 val deed = bank.deed(deedClass) ?: throw PropertyOwnershipException("${deedClass.simpleName} is not available for purchase")
                 println($$"\t\t$${player.name} landed on $${deedClass.simpleName}. It can be purchased for $$${deed.price}")
 
-                if (player.isBuying(deed)) {
+                if (player.isBuying(deed, bank, board)) {
                     bank.sellDeedToPlayer(deedClass, player, board)
                 } else {
                     // TODO: a wild auction appears!
