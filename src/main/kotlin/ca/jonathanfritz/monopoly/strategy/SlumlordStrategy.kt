@@ -107,7 +107,7 @@ class SlumlordStrategy(
             buildString {
                 append(baseValue.reasoning)
                 if (multiplier != 1.0) {
-                    append(", Property type: ${String.format("%.1fx", multiplier)}")
+                    append(", Property type: ${String.format("%.2fx", multiplier)}")
                 }
                 if (monopolyMultiplier != 1.0) {
                     append(", Monopoly completion: +50%")
