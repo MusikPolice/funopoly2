@@ -10,6 +10,8 @@ import ca.jonathanfritz.monopoly.card.Deck
 import ca.jonathanfritz.monopoly.deed.Property
 import ca.jonathanfritz.monopoly.deed.Railroad
 import ca.jonathanfritz.monopoly.deed.Utility
+import ca.jonathanfritz.monopoly.strategy.DefaultStrategy
+import ca.jonathanfritz.monopoly.strategy.PlayerStrategy
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
 import kotlin.test.assertEquals
@@ -160,7 +162,7 @@ internal class BoardTest {
     @Suppress("ktlint:standard:max-line-length")
     fun `a player who is in jail for three turns without rolling doubles, playing a card, or paying a fee is charged the fee and proceeds with their turn as expected`() {
         val config = Config()
-        val player = NotUsingGetOutOfJailFreeCardPlayer("Ernie", 50)
+        val player = Player("Ernie", money = 50, strategy = NeverPayJailFeeStrategy())
         val bank = Bank(money = 0)
         val fakeDice = FakeDice(Roll(2, 1), Roll(2, 1), Roll(2, 1))
         val board = Board(listOf(player), bank = bank, dice = fakeDice)
@@ -183,11 +185,9 @@ internal class BoardTest {
         assertEquals(config.getOutOfJailEarlyFeeAmount, bank.money)
     }
 
-    private class NotUsingGetOutOfJailFreeCardPlayer(
-        name: String,
-        money: Int,
-    ) : Player(name, money) {
-        override fun isPayingGetOutOfJailEarlyFee(amount: Int) = false
+    // Strategy that never pays jail fee (for testing forced jail release after 3 turns)
+    private class NeverPayJailFeeStrategy : PlayerStrategy by DefaultStrategy() {
+        override fun shouldPayJailFee(feeAmount: Int, player: Player, board: Board) = false
     }
 
     @Test

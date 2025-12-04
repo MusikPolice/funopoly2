@@ -117,10 +117,18 @@ open class Player(
     }
 
     // returns true if the player intends to pay a fine to get out of jail on this turn
-    // TODO: there are some cases in which the player should stay in jail rather than paying the fine
-    //  consider only paying if money > highest rent on the board > $50
-    open fun isPayingGetOutOfJailEarlyFee(amount: Int) =
-        isInJail && !hasGetOutOfJailFreeCard() && remainingTurnsInJail > 0 && money > amount
+    fun isPayingGetOutOfJailEarlyFee(
+        amount: Int,
+        board: Board,
+    ): Boolean {
+        // Basic checks: must be in jail, no card, turns remaining
+        if (!isInJail || hasGetOutOfJailFreeCard() || remainingTurnsInJail <= 0) {
+            return false
+        }
+        
+        // Delegate to strategy for decision
+        return strategy.shouldPayJailFee(amount, this, board)
+    }
 
     // returns a Pair<num houses, num hotels> that includes developments on all owned properties
     fun countDevelopments(): Pair<Int, Int> = deeds.values.sumOf { it.numHouses } to deeds.values.sumOf { (if (it.hasHotel) 1 else 0) }
@@ -147,8 +155,11 @@ open class Player(
         other.money += amount
     }
 
-    fun isBuying(deed: TitleDeed, bank: Bank, board: Board): Boolean =
-        strategy.shouldBuyProperty(deed, this, bank, board)
+    fun isBuying(
+        deed: TitleDeed,
+        bank: Bank,
+        board: Board,
+    ): Boolean = strategy.shouldBuyProperty(deed, this, bank, board)
 
     fun shouldUnmortgageProperty(
         deed: TitleDeed,
@@ -163,46 +174,38 @@ open class Player(
         bank: Bank,
         board: Board,
     ) {
-        // railroads, utilities, and properties that already have a hotel cannot be developed
-        val developableDeeds =
+        // Filter to properties that CAN be developed (monopolies, affordable, even-building legal)
+        val developableProperties =
             deeds
                 .filterNot { it.value.hasHotel }
                 .map { it.key }
                 .filterIsInstance<Property>()
+                .filter { property ->
+                    // Must have monopoly on the color group
+                    hasMonopoly(property.colourGroup)
+                }
+                .filter { property ->
+                    // Must be able to afford it
+                    property.buildingCost <= money
+                }
+                .filter { property ->
+                    // Must respect even building rules
+                    when (getDevelopment(property::class).numHouses) {
+                        4 -> property.addingOrRemovingHotelRespectsEvenBuildingRules(this)
+                        else -> property.addingHouseRespectsEvenBuildingRules(this)
+                    }
+                }
 
-        // attempt to determine which of the developable deeds we should build on
-        developableDeeds
-            .map { titleDeed ->
-                titleDeed.colourGroup
-            }.distinct()
-            .filter { ownedColourGroup ->
-                // can only build if we have a monopoly on the colour group
-                hasMonopoly(ownedColourGroup)
-            }.flatMap { colourGroup ->
-                // convert the colour group back into its constituent properties, limiting to properties we can afford to develop
-                developableDeeds.filter { titleDeed ->
-                    // TODO: this is pretty aggressive - On round 27, Elmo spends all but $44 to build a house
-                    //  consider holding at least highest rent on the board in escrow
-                    titleDeed.colourGroup == colourGroup && titleDeed.buildingCost < money
-                }
-            }.sortedByDescending { candidateProperty ->
-                // this is a bit inelegant - the idea here is to develop the property that yields the highest return on
-                // investment. A reasonable proxy for this is the property's current rent
-                candidateProperty.calculateRent(this, board)
-            }.firstOrNull { candidateProperty ->
-                // even building rules may limit the properties that can be developed at this time
-                // choose the first one that we are currently allowed to build on
-                when (getDevelopment(candidateProperty::class).numHouses) {
-                    4 -> candidateProperty.addingOrRemovingHotelRespectsEvenBuildingRules(this)
-                    else -> candidateProperty.addingHouseRespectsEvenBuildingRules(this)
-                }
-            }?.let { property ->
-                // if we found a property that can be developed, build a house or hotel on it as appropriate
-                when (getDevelopment(property::class).numHouses) {
-                    4 -> bank.sellHotelToPlayer(property::class, this, board)
-                    else -> bank.sellHouseToPlayer(property::class, this, board)
-                }
+        // Delegate to strategy to select which property to develop
+        val propertyToDevelop = strategy.selectPropertyToDevelop(developableProperties, this, bank, board)
+
+        // Build on the selected property
+        propertyToDevelop?.let { property ->
+            when (getDevelopment(property::class).numHouses) {
+                4 -> bank.sellHotelToPlayer(property::class, this, board)
+                else -> bank.sellHouseToPlayer(property::class, this, board)
             }
+        }
     }
 
     fun unmortgageProperties(
@@ -220,65 +223,88 @@ open class Player(
     }
 
     // when this is called, the player will attempt to mortgage or sell enough assets to cover the specified amount
-    // TODO: this code can be tidied up
     fun liquidateAssets(
         requiredAmount: Int,
         bank: Bank,
         board: Board,
     ) {
-        // Step 1: attempt to cover the required amount by mortgaging properties that are not a part of a monopoly
-        // we earn double rent from and can develop monopolies, so it's best not to break them up if possible
-        deeds
-            .filterNot { titleDevelopment ->
-                hasMonopoly(titleDevelopment.key.colourGroup)
-            }.selectDeedsToMortgage()
-            .takeWhile { deed ->
-                bank.mortgageDeed(deed::class, this)
-                money < requiredAmount
-            }
+        // Step 1: Mortgage non-monopoly properties first
+        val nonMonopolyDeeds =
+            deeds
+                .filterNot { hasMonopoly(it.key.colourGroup) }
+                .keys
+                .filter { deed -> !deeds[deed]!!.isMortgaged }
+                .filter { deed ->
+                    val dev = deeds[deed]!!
+                    !dev.hasHotel && dev.numHouses == 0
+                }
+
+        val mortgagePriority = strategy.prioritizeMortgages(nonMonopolyDeeds.toList(), this, board)
+        for (deed in mortgagePriority) {
+            if (money >= requiredAmount) return
+            bank.mortgageDeed(deed::class, this)
+        }
         if (money >= requiredAmount) return
 
         do {
-            // Step 2: attempt to cover the remaining amount by selling houses and hotels
-            // selling houses/hotels nets half of the building's purchase value and must adhere to even building rules
-            deeds
-                .filter { it.value.hasHotel || it.value.numHouses > 0 }
-                .filter { it.key is Property }
-                .map { (it.key as Property) to it.value.hasHotel }
-                .sortedBy {
-                    // sell off buildings that net the lowest rent first to minimize income loss
-                    it.first.calculateRent(this, board)
-                }.filter { (deed, hasHotel) ->
-                    if (hasHotel) {
-                        deed.addingOrRemovingHotelRespectsEvenBuildingRules(this)
+            // Step 2: Sell buildings (must respect even building rules)
+            val developedProperties =
+                deeds
+                    .filter { it.value.hasHotel || it.value.numHouses > 0 }
+                    .keys
+                    .filterIsInstance<Property>()
+
+            val sellPriority = strategy.prioritizeBuildingSales(developedProperties, this, board)
+
+            // Sell buildings one at a time, respecting even building rules
+            var soldSomething = false
+            for (property in sellPriority) {
+                if (money >= requiredAmount) return
+
+                val development = deeds[property]!!
+                val canSell =
+                    if (development.hasHotel) {
+                        property.addingOrRemovingHotelRespectsEvenBuildingRules(this)
                     } else {
-                        deed.removingHouseRespectsEvenBuildingRules(this)
+                        property.removingHouseRespectsEvenBuildingRules(this)
                     }
-                }.takeWhile { (deed, hasHotel) ->
-                    if (hasHotel) {
-                        bank.buyHotelFromPlayer(deed::class, this)
+
+                if (canSell) {
+                    if (development.hasHotel) {
+                        bank.buyHotelFromPlayer(property::class, this)
                     } else {
-                        bank.buyHouseFromPlayer(deed::class, this)
+                        bank.buyHouseFromPlayer(property::class, this)
                     }
-                    money < requiredAmount
+                    soldSomething = true
+                    break // Restart loop to re-evaluate priorities
                 }
+            }
+
             if (money >= requiredAmount) return
 
-            // Step 3: second pass at attempting to mortgage properties
-            // this time, only consider properties that are a part of a monopoly and have been newly undeveloped
-            deeds
-                .filter { titleDevelopment ->
-                    hasMonopoly(titleDevelopment.key.colourGroup)
-                }.selectDeedsToMortgage()
-                .takeWhile { deed ->
-                    bank.mortgageDeed(deed::class, this)
-                    money < requiredAmount
-                }
+            // Step 3: Mortgage monopoly properties (now that they're undeveloped)
+            val monopolyDeeds =
+                deeds
+                    .filter { hasMonopoly(it.key.colourGroup) }
+                    .keys
+                    .filter { deed -> !deeds[deed]!!.isMortgaged }
+                    .filter { deed ->
+                        val dev = deeds[deed]!!
+                        !dev.hasHotel && dev.numHouses == 0
+                    }
+
+            val monopolyMortgagePriority = strategy.prioritizeMortgages(monopolyDeeds.toList(), this, board)
+            for (deed in monopolyMortgagePriority) {
+                if (money >= requiredAmount) return
+                bank.mortgageDeed(deed::class, this)
+            }
             if (money >= requiredAmount) return
+
+            // If we didn't sell anything and still need money, we're stuck
+            if (!soldSomething) break
         } while (!hasFullyLiquidatedAssets())
 
         // if all else fails, this player is bankrupt
-
         println($$"\t\t$$name owes $$$requiredAmount but has liquidated all assets and only has $$$money remaining")
         throw BankruptcyException($$"$$name has insufficient funds ($$$money < $$$requiredAmount)")
     }
@@ -296,7 +322,7 @@ open class Player(
         if (isBankrupt) {
             throw IllegalStateException("$name is already bankrupt and cannot declare bankruptcy again")
         }
-        
+
         if (!hasFullyLiquidatedAssets()) {
             throw IllegalStateException("$name has declared bankruptcy without first liquidating their assets")
         }
@@ -328,7 +354,7 @@ open class Player(
         if (isBankrupt) {
             throw IllegalStateException("$name is already bankrupt and cannot declare bankruptcy again")
         }
-        
+
         if (!hasFullyLiquidatedAssets()) {
             throw IllegalStateException("$name has declared bankruptcy without first liquidating their assets")
         }
@@ -364,20 +390,20 @@ open class Player(
             } catch (_: BankruptcyException) {
                 // Cascading bankruptcy: creditor can't afford to receive assets
                 println("\t\t${creditor.name} cannot afford to receive ${this.name}'s assets")
-                
+
                 // Creditor bankrupts to bank
                 creditor.declareBankruptcy(bank, board)
-                
+
                 // Original bankrupt player also bankrupts to bank (change creditor from player to bank)
                 // Transfer remaining assets to bank instead of creditor
                 bank.charge(this.money, this, board, "in the bankruptcy settlement")
                 while (hasGetOutOfJailFreeCard()) board.returnGetOutOfJailFreeCard(this.getOutOfJailFreeCards.removeAt(0))
                 bank.transferMortgagedDeeds(this.deeds.keys)
                 this.deeds.clear()
-                
+
                 isBankrupt = true
                 println("\t\t$name is bankrupt!")
-                
+
                 // Emit bankruptcy to bank, not to the original creditor
                 eventBus?.emit(GameEvent.PlayerBankrupted(this, bank, board.currentRound, netWorthAtBankruptcy))
                 return
@@ -398,7 +424,7 @@ open class Player(
 
             // Transfer the deed first
             creditor.deeds[deed] = development
-            
+
             if (development.isMortgaged) {
                 // Creditor must decide: unmortgage or assume
                 if (creditor.shouldUnmortgageProperty(deed, deed.mortgageValue, board)) {
@@ -422,34 +448,6 @@ open class Player(
         // emit bankruptcy event
         eventBus?.emit(GameEvent.PlayerBankrupted(this, creditor, board.currentRound, netWorthAtBankruptcy))
     }
-
-    private fun Map<TitleDeed, Development>.selectDeedsToMortgage(): List<TitleDeed> =
-        this
-            .filterNot { titleDevelopment ->
-                // we can't mortgage a property that has already been mortgaged
-                titleDevelopment.value.isMortgaged
-            }.filterNot { titleDevelopment ->
-                // we can't mortgage a property that has been developed
-                titleDevelopment.value.hasHotel || titleDevelopment.value.numHouses > 0
-            }.map { titleDevelopment ->
-                titleDevelopment.key
-            }.sortedWith(
-                compareByDescending<TitleDeed> { deed ->
-                    // the number of properties that need to be purchased before we have a monopoly on this colour group
-                    // intent here is to avoid mortgaging properties that are most likely to form a monopoly in future turns
-                    val numDeedsInColourGroup =
-                        deed.colourGroup
-                            .titleDeeds()
-                            .values
-                            .count()
-                    val numOwnedDeedsInColourGroup = deeds.keys.count { it.colourGroup == deed.colourGroup }
-                    numDeedsInColourGroup - numOwnedDeedsInColourGroup
-                }.thenBy { deed ->
-                    // we want to mortgage the property with the smallest value first to make it easier to pay off the debt
-                    // this also means that cheaper properties that yield smaller rents are most likely to be mortgaged
-                    deed.mortgageValue
-                },
-            )
 
     data class Development(
         var numHouses: Int = 0,

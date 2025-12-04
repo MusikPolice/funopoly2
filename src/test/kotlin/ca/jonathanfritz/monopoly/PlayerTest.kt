@@ -13,10 +13,7 @@ import ca.jonathanfritz.monopoly.deed.TitleDeed
 import ca.jonathanfritz.monopoly.deed.Utility
 import ca.jonathanfritz.monopoly.exception.PropertyOwnershipException
 import ca.jonathanfritz.monopoly.strategy.DefaultStrategy
-import ca.jonathanfritz.monopoly.strategy.PlayerStrategy
-import ca.jonathanfritz.monopoly.strategy.PropertyValuation
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -53,7 +50,7 @@ internal class PlayerTest {
                     ),
             )
         assertTrue(player.hasMonopoly(ColourGroup.Brown))
-        ColourGroup.values().filterNot { it == ColourGroup.Brown }.forEach { assertFalse(player.hasMonopoly(it)) }
+        ColourGroup.entries.filterNot { it == ColourGroup.Brown }.forEach { assertFalse(player.hasMonopoly(it)) }
     }
 
     @Test
@@ -70,7 +67,7 @@ internal class PlayerTest {
                     ),
             )
         assertTrue(player.hasMonopoly(ColourGroup.Railroads))
-        ColourGroup.values().filterNot { it == ColourGroup.Railroads }.forEach { assertFalse(player.hasMonopoly(it)) }
+        ColourGroup.entries.filterNot { it == ColourGroup.Railroads }.forEach { assertFalse(player.hasMonopoly(it)) }
     }
 
     @Test
@@ -85,7 +82,7 @@ internal class PlayerTest {
                     ),
             )
         assertTrue(player.hasMonopoly(ColourGroup.Utilities))
-        ColourGroup.values().filterNot { it == ColourGroup.Utilities }.forEach { assertFalse(player.hasMonopoly(it)) }
+        ColourGroup.entries.filterNot { it == ColourGroup.Utilities }.forEach { assertFalse(player.hasMonopoly(it)) }
     }
 
     @Test
@@ -185,29 +182,33 @@ internal class PlayerTest {
     @Test
     fun `isPayingGetOutOfJailEarlyFee returns false if player is not in jail`() {
         val player = Player("Cookie Monster", money = 100)
+        val board = Board(listOf(player), Bank())
         assertFalse(player.isInJail)
-        assertFalse(player.isPayingGetOutOfJailEarlyFee(50))
+        assertFalse(player.isPayingGetOutOfJailEarlyFee(50, board))
     }
 
     @Test
     fun `isPayingGetOutOfJailEarlyFee returns false if player is in jail but does not have enough money to pay the fine`() {
         val player = Player("Cookie Monster", money = 10)
+        val board = Board(listOf(player), Bank())
         player.isInJail = true
-        assertFalse(player.isPayingGetOutOfJailEarlyFee(50))
+        assertFalse(player.isPayingGetOutOfJailEarlyFee(50, board))
     }
 
     @Test
     fun `isPayingGetOutOfJailEarlyFee returns false if player is in jail and can afford the fine and has get out of jail free card`() {
         val player = Player("Cookie Monster", money = 100, getOutOfJailFreeCards = mutableListOf(ChanceCard.GetOutOfJailFree))
+        val board = Board(listOf(player), Bank())
         player.isInJail = true
-        assertFalse(player.isPayingGetOutOfJailEarlyFee(50))
+        assertFalse(player.isPayingGetOutOfJailEarlyFee(50, board))
     }
 
     @Test
     fun `isPayingGetOutOfJailEarlyFee returns true if player is in jail and can afford the fine`() {
         val player = Player("Cookie Monster", money = 100)
+        val board = Board(listOf(player), Bank())
         player.isInJail = true
-        assertTrue(player.isPayingGetOutOfJailEarlyFee(50))
+        assertTrue(player.isPayingGetOutOfJailEarlyFee(50, board))
     }
 
     @Test
@@ -506,11 +507,12 @@ internal class PlayerTest {
         player1.deeds[OrientalAvenue()] = Player.Development()
         player1.deeds[VermontAvenue()] = Player.Development(isMortgaged = true)
 
-        val player2 = Player(
-            "Player 2",
-            money = 1000,
-            strategy = ConditionalUnmortgageStrategy { deed -> deed is BalticAvenue }
-        )
+        val player2 =
+            Player(
+                "Player 2",
+                money = 1000,
+                strategy = ConditionalUnmortgageStrategy { deed -> deed is BalticAvenue },
+            )
         val (_, _, bankBoard) = createBankruptcyScenario(player1, player2)
         val (bank, board) = bankBoard
 
@@ -769,7 +771,7 @@ internal class PlayerTest {
             deed: TitleDeed,
             unmortgageCost: Int,
             player: Player,
-            board: Board
+            board: Board,
         ): Boolean = true
     }
 
@@ -778,16 +780,18 @@ internal class PlayerTest {
             deed: TitleDeed,
             unmortgageCost: Int,
             player: Player,
-            board: Board
+            board: Board,
         ): Boolean = false
     }
 
-    private class ConditionalUnmortgageStrategy(private val shouldUnmortgage: (TitleDeed) -> Boolean) : DefaultStrategy() {
+    private class ConditionalUnmortgageStrategy(
+        private val shouldUnmortgage: (TitleDeed) -> Boolean,
+    ) : DefaultStrategy() {
         override fun shouldUnmortgageProperty(
             deed: TitleDeed,
             unmortgageCost: Int,
             player: Player,
-            board: Board
+            board: Board,
         ): Boolean = shouldUnmortgage(deed)
     }
 }

@@ -132,6 +132,12 @@ class Board(
     var currentRound: Int = 0
         private set
 
+    /**
+     * Returns the total number of buyable properties on the board.
+     * This includes all properties, railroads, and utilities.
+     */
+    fun totalBuyableProperties(): Int = tiles.count { it is Buyable }
+
     fun executeRound(round: Int) {
         currentRound = round
         println("\nRound $round:")
@@ -215,7 +221,7 @@ class Board(
             returnGetOutOfJailFreeCard(card)
             player.isInJail = false
             eventBus?.emit(GameEvent.PlayerLeftJail(player, "used card"))
-        } else if (player.isPayingGetOutOfJailEarlyFee(config.getOutOfJailEarlyFeeAmount)) {
+        } else if (player.isPayingGetOutOfJailEarlyFee(config.getOutOfJailEarlyFeeAmount, this)) {
             // charge the player a fee and let them out of jail
             bank.charge(config.getOutOfJailEarlyFeeAmount, player, this, "to get out of jail early")
             player.isInJail = false

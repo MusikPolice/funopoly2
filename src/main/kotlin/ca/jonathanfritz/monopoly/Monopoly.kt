@@ -7,6 +7,7 @@ import ca.jonathanfritz.monopoly.event.GameEvent
 import ca.jonathanfritz.monopoly.statistics.GameStatistics
 import ca.jonathanfritz.monopoly.statistics.StatisticsFormatter
 import ca.jonathanfritz.monopoly.statistics.StatisticsOutputFormat
+import ca.jonathanfritz.monopoly.strategy.ConservativeStrategy
 import kotlin.random.Random
 
 // TODO:
@@ -29,11 +30,13 @@ class Monopoly(
 
     private val board: Board = Board(players, bank, rng, eventBus = eventBus),
 ) {
-    private val gameStatistics: GameStatistics? = if (config.collectStatistics && eventBus != null) {
-        GameStatistics().also { eventBus.register(it) }
-    } else {
-        null
-    }
+    private val gameStatistics: GameStatistics? =
+        if (config.collectStatistics && eventBus != null) {
+            GameStatistics().also { eventBus.register(it) }
+        } else {
+            null
+        }
+
     init {
         println("Starting a new game with ${players.size} players:")
         players.forEach { player ->
@@ -74,6 +77,7 @@ class Monopoly(
             StatisticsOutputFormat.CONSOLE -> {
                 println(StatisticsFormatter.formatConsole(report))
             }
+
             StatisticsOutputFormat.JSON -> {
                 println(StatisticsFormatter.formatJson(report))
             }
@@ -84,12 +88,13 @@ class Monopoly(
 fun main() {
     val eventBus = EventBus()
     Monopoly(
-        players = listOf(
-            Player("Elmo", eventBus = eventBus),
-            Player("Bert", eventBus = eventBus),
-            Player("Ernie", eventBus = eventBus),
-            Player("Cookie Monster", eventBus = eventBus),
-        ),
+        players =
+            listOf(
+                Player("Elmo", eventBus = eventBus),
+                Player("Bert", eventBus = eventBus, strategy = ConservativeStrategy()),
+                Player("Ernie", eventBus = eventBus),
+                Player("Cookie Monster", eventBus = eventBus),
+            ),
         rng = Random(1), // for now, play the same game over and over to verify functionality
         eventBus = eventBus,
     ).executeGame()
