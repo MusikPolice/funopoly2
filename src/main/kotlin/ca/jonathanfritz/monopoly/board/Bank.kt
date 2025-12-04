@@ -121,6 +121,11 @@ class Bank(
         titleDeeds.remove(deed)
         player.deeds[deed] = Player.Development()
         eventBus?.emit(GameEvent.PropertyPurchased(player, deed, purchasePrice))
+        
+        // Check if this purchase completed a monopoly
+        if (player.hasMonopoly(deed.colourGroup)) {
+            println("\t\t${player.name} now has a monopoly on ${deed.colourGroup}!")
+        }
     }
 
     // TODO: houses can be built out of turn, potentially triggering an auction for

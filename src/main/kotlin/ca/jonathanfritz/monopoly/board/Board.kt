@@ -146,8 +146,24 @@ class Board(
         // in each round, every player gets between one and three turns on which to affect the game state
         players.filterNot { it.isBankrupt() }.forEach { player ->
             eventBus?.emit(GameEvent.TurnStarted(player, round))
+
+            val jailTurnText =
+                if (player.isInJail && player.remainingTurnsInJail > 0) {
+                    val turnNumber = 4 - player.remainingTurnsInJail
+                    val ordinal =
+                        when (turnNumber) {
+                            1 -> "first"
+                            2 -> "second"
+                            3 -> "third"
+                            else -> throw IllegalStateException("Player cannot spend more than 3 turns in jail")
+                        }
+                    "$ordinal turn In"
+                } else {
+                    if (player.isInJail) "In" else "on"
+                }
+
             println(
-                $$"\n\tStarting $${player.name}'s turn $${if (player.isInJail) "In" else "on"} $${player.tileName()} with $$${player.money}",
+                $$"\n\tStarting $${player.name}'s $$jailTurnText $${player.tileName()} with $$${player.money}",
             )
 
             // the player can get out of jail early by using a Get Out of Jail Free card or by paying a fee

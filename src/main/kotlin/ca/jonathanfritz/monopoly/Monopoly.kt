@@ -8,6 +8,9 @@ import ca.jonathanfritz.monopoly.statistics.GameStatistics
 import ca.jonathanfritz.monopoly.statistics.StatisticsFormatter
 import ca.jonathanfritz.monopoly.statistics.StatisticsOutputFormat
 import ca.jonathanfritz.monopoly.strategy.ConservativeStrategy
+import ca.jonathanfritz.monopoly.strategy.GamblerStrategy
+import ca.jonathanfritz.monopoly.strategy.HighRentStrategy
+import ca.jonathanfritz.monopoly.strategy.SlumlordStrategy
 import kotlin.random.Random
 
 // TODO:
@@ -87,15 +90,16 @@ class Monopoly(
 
 fun main() {
     val eventBus = EventBus()
+    val rng = Random(1)
     Monopoly(
         players =
             listOf(
-                Player("Elmo", eventBus = eventBus),
+                Player("Oscar the Grouch", eventBus = eventBus, strategy = SlumlordStrategy(rng)),
                 Player("Bert", eventBus = eventBus, strategy = ConservativeStrategy()),
-                Player("Ernie", eventBus = eventBus),
-                Player("Cookie Monster", eventBus = eventBus),
+                Player("Count von Count", eventBus = eventBus, strategy = HighRentStrategy(rng)),
+                Player("Cookie Monster", eventBus = eventBus, strategy = GamblerStrategy(rng)),
             ),
-        rng = Random(1), // for now, play the same game over and over to verify functionality
+        rng = rng, // for now, play the same game over and over to verify functionality
         eventBus = eventBus,
     ).executeGame()
 }
