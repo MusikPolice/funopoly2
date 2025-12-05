@@ -148,17 +148,15 @@ class Board(
             eventBus?.emit(GameEvent.TurnStarted(player, round))
 
             if (player.isInJail) {
-                val jailTurnText = {
-                    val turnNumber = 4 - player.remainingTurnsInJail
-                    val ordinal =
-                        when (turnNumber) {
-                            1 -> "first"
-                            2 -> "second"
-                            3 -> "third"
-                            else -> throw IllegalStateException("Player cannot spend more than 3 turns in jail")
-                        }
-                    "$ordinal turn In"
-                }
+                val turnNumber = 4 - player.remainingTurnsInJail
+                val ordinal =
+                    when (turnNumber) {
+                        1 -> "first"
+                        2 -> "second"
+                        3 -> "third"
+                        else -> throw IllegalStateException("Player cannot spend more than 3 turns in jail")
+                    }
+                val jailTurnText = "$ordinal turn in"
                 println(
                     $$"\n\tStarting $${player.name}'s $$jailTurnText jail with $$${player.money}",
                 )
