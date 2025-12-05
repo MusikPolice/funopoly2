@@ -1,4 +1,4 @@
-﻿# Funopoly2
+# Funopoly2
 
 A Monopoly implementation written in Kotlin.
 
@@ -95,7 +95,11 @@ The `Config` data class supports the following options:
 data class Config(
     val maxRounds: Int = 1000,                  // Maximum rounds before draw
     val collectStatistics: Boolean = false,      // Enable statistics collection
-    val statisticsOutputFormat: StatisticsOutputFormat = StatisticsOutputFormat.CONSOLE
+    val statisticsOutputFormat: StatisticsOutputFormat = StatisticsOutputFormat.CONSOLE,
+    val enableAuctions: Boolean = true,          // Enable property auctions
+    val auctionStartingBid: Int = 10,           // Starting bid for auctions
+    val auctionMinimumIncrement: Int = 1,       // Minimum bid increment
+    val auctionMaxRounds: Int = 100             // Maximum auction rounds (safety limit)
 )
 
 enum class StatisticsOutputFormat {
@@ -104,9 +108,57 @@ enum class StatisticsOutputFormat {
 }
 ```
 
+### Property Auctions
+
+When a player lands on an unowned property and declines to purchase it at list price, the property goes to auction. All players (including the declining player) can bid on the property.
+
+**Auction Rules:**
+- Bidding starts at $10 (configurable via `Config.auctionStartingBid`)
+- Minimum bid increment is $1 (configurable via `Config.auctionMinimumIncrement`)
+- Players bid in rounds until only one bidder remains
+- Highest bidder wins and pays their bid amount (not the list price)
+- Players in jail can participate in auctions
+- Auctions can be disabled via `Config.enableAuctions = false`
+
+**Example:**
+```kotlin
+val config = Config(
+    enableAuctions = true,          // Enable auctions
+    auctionStartingBid = 10,        // Start at $10
+    auctionMinimumIncrement = 1     // Minimum $1 increments
+)
+
+val board = Board(players, Bank(), config = config)
+```
+
+**Strategy Bidding Behaviors:**
+
+Each player strategy has unique auction bidding behavior:
+
+| Strategy | Bidding Style | Max Bid | Typical Increment |
+|----------|---------------|---------|-------------------|
+| **DefaultStrategy** | Never bids | N/A | N/A |
+| **ConservativeStrategy** | Cautious, high reserves | 70% of strategic value | $5 |
+| **SlumlordStrategy** | Prefers cheap properties | 120% of price | $5 |
+| **HighRentStrategy** | Aggressive on expensive properties | 150% of price | $20 |
+| **GamblerStrategy** | Very aggressive, especially railroads | 200-250% of price | $50-100 |
+| **CalculatingStrategy** | ROI-based, efficient | 110% of strategic value (150% for monopoly) | $10 |
+| **ChaoticStrategy** | Random, blocks opponents | 80-150% of price | $1-50 |
+| **ImpulsiveStrategy** | Random, inconsistent | 50-200% of price | $1-100 |
+
+**Auction Statistics:**
+
+When statistics collection is enabled, auction metrics are tracked:
+- Total auctions conducted
+- Properties sold at auction vs. list price
+- Average auction discount/premium
+- Auction participation by strategy
+- Highest/lowest auction prices
+- Auction events: `AuctionStarted`, `AuctionBid`, `AuctionPlayerDropped`, `AuctionEnded`
+
 ### Event System
 
-The statistics system is built on a comprehensive event bus that emits 22 different event types:
+The statistics system is built on a comprehensive event bus that emits 26 different event types:
 
 - **Game lifecycle**: `RoundStarted`, `RoundEnded`, `TurnStarted`, `TurnEnded`, `GameEnded`
 - **Movement**: `DiceRolled`, `PlayerMoved`, `TileLanded`, `PassedGo`
@@ -116,6 +168,7 @@ The statistics system is built on a comprehensive event bus that emits 22 differ
 - **Jail**: `PlayerSentToJail`, `PlayerLeftJail`
 - **Cards**: `CardDrawn`
 - **Bankruptcy**: `PlayerBankrupted`
+- **Auctions**: `AuctionStarted`, `AuctionBid`, `AuctionPlayerDropped`, `AuctionEnded`
 
 See `docs/TechnicalAnalysis.md` for detailed event system documentation.
 

@@ -496,13 +496,58 @@ From `Board.executeRound` and helpers:
   - Finally clears debtor deeds, marks bankrupt, prints, and emits `GameEvent.PlayerBankrupted` with creditor=`Player`.
   - Attempting to transfer developed properties (houses/hotels > 0) throws `PropertyDevelopmentException`, enforcing the expectation that liquidation fully cleared development first.
 
+### 4.6 Property Auction Algorithm
+
+When a player lands on an unowned property and declines to purchase it at list price, the property goes to auction (if `Config.enableAuctions` is true). The `Auction` class orchestrates the bidding process:
+
+**Initialization:**
+- Filters out bankrupt players from participants
+- Sets `currentBid` to `Config.auctionStartingBid` (default $10)
+- Initializes `activeBidders` with all non-bankrupt players
+- Emits `GameEvent.AuctionStarted` with deed, participants, and starting bid
+
+**Bidding Rounds:**
+1. For each round, collect bids from all active bidders by calling `PlayerStrategy.calculateBidIncrease(deed, currentBid, minimumBid, bank, board)`
+2. Process bids:
+   - `null` bid → player drops out, removed from `activeBidders`, emits `GameEvent.AuctionPlayerDropped`
+   - Bid ≤ `currentBid` → invalid, player drops out
+   - Bid < `currentBid + Config.auctionMinimumIncrement` → insufficient increment, player drops out
+   - Valid bid → if highest this round, becomes new `currentBid` and `currentWinner`, emits `GameEvent.AuctionBid`
+3. Continue until:
+   - No active bidders remain (no winner)
+   - Only one bidder remains and they are the current winner (auction ends)
+   - Maximum rounds exceeded (`Config.auctionMaxRounds`, default 100)
+
+**Finalization:**
+- Emits `GameEvent.AuctionEnded` with winner, winning bid, participant count, and round count
+- If winner exists:
+  - If winner cannot afford bid, calls `Player.liquidateAssets()`
+  - Calls `Bank.sellDeedToPlayer(deed::class, winner, board, auctionPrice = currentBid)`
+  - Winner pays auction price (not list price)
+  - On `BankruptcyException`, winner declares bankruptcy and auction has no winner
+- If no winner, property remains with bank
+
+**Strategy Integration:**
+Each `PlayerStrategy` implements `calculateBidIncrease()` to determine bidding behavior:
+- Returns `Int?` representing the new bid amount (or `null` to drop out)
+- Strategies consider: property value, monopoly completion potential, current cash, reserves
+- Strategies respect affordability: `min(player.money, player.money - strategy.cashReserve)`
+- Bidding styles vary dramatically by strategy (see section 3.1 for strategy-specific behaviors)
+
+**Console Output:**
+Auctions produce formatted console output showing:
+- Auction start with property name, list price, starting bid, participants
+- Each round with current bid and active bidder count
+- Individual bids and dropouts
+- Final result with winner and winning bid (or "no bids received")
+
 ---
 
 ## 5. Event System & Statistics
 
 ### 5.1 Event Model (`event` package)
 
-- `GameEvent` is a sealed class grouping **22 event types** into categories:
+- `GameEvent` is a sealed class grouping **26 event types** into categories:
   - **Movement:** `RoundStarted`, `TurnStarted`, `DiceRolled`, `PlayerMoved`, `TileLanded`, `TurnEnded`, `RoundEnded`.
   - **Financial:** `BankPaidPlayer`, `PlayerChargedByBank`, `RentPaid`.
   - **Property:** `PropertyPurchased`, `PropertyMortgaged`, `PropertyUnmortgaged`.
@@ -510,6 +555,7 @@ From `Board.executeRound` and helpers:
   - **Jail:** `PlayerSentToJail`, `PlayerLeftJail` (`method` includes "rolled doubles" / "paid fee" / "used card").
   - **Cards:** `CardDrawn` (`deck` field is "Chance" or "Community Chest").
   - **Bankruptcy:** `PlayerBankrupted` (creditor is `Player` or `Bank`), `AssetTransferred` (currently unused by statistics, available for future granularity).
+  - **Auctions:** `AuctionStarted`, `AuctionBid`, `AuctionPlayerDropped`, `AuctionEnded`.
   - **Game lifecycle:** `GameEnded`.
 
 ### 5.2 EventBus
