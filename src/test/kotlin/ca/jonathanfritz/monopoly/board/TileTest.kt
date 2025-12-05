@@ -12,14 +12,14 @@ import kotlin.test.assertTrue
 internal class TileTest {
     @Test
     fun `income tax tile charges player upon landing`() {
-        val player = Player("Big Bird", 100)
+        val player = Player("Big Bird", 500)
         val bank = Bank(money = 0)
         val incomeTax = Tile.IncomeTax
 
         incomeTax.onLanding(player, bank, Board(listOf(player)))
 
-        assertEquals(90, player.money)
-        assertEquals(10, bank.money)
+        assertEquals(300, player.money)
+        assertEquals(200, bank.money)
     }
 
     @Test

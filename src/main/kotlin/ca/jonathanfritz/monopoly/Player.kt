@@ -102,9 +102,6 @@ open class Player(
                     buildingCost * developments
                 }.sum()
 
-    // income tax is the lesser of $200 or 10% of net worth
-    fun incomeTaxAmount(): Int = ceil(min(200.0, netWorth() * 0.10)).toInt()
-
     // give the player a get out of jail free card for later use
     fun grantGetOutOfJailFreeCard(card: Card.GetOutOfJailFreeCard) = getOutOfJailFreeCards.add(card)
 
@@ -128,7 +125,7 @@ open class Player(
         if (!isInJail || hasGetOutOfJailFreeCard() || remainingTurnsInJail <= 0) {
             return false
         }
-        
+
         // Delegate to strategy for decision
         return strategy.shouldPayJailFee(amount, this, board)
     }
@@ -175,9 +172,7 @@ open class Player(
         minimumBid: Int,
         bank: Bank,
         board: Board,
-    ): Int? {
-        return strategy.calculateBidIncrease(deed, currentBid, minimumBid, this, bank, board)
-    }
+    ): Int? = strategy.calculateBidIncrease(deed, currentBid, minimumBid, this, bank, board)
 
     fun shouldUnmortgageProperty(
         deed: TitleDeed,
@@ -201,12 +196,10 @@ open class Player(
                 .filter { property ->
                     // Must have monopoly on the color group
                     hasMonopoly(property.colourGroup)
-                }
-                .filter { property ->
+                }.filter { property ->
                     // Must be able to afford it
                     property.buildingCost <= money
-                }
-                .filter { property ->
+                }.filter { property ->
                     // Must respect even building rules
                     when (getDevelopment(property::class).numHouses) {
                         4 -> property.addingOrRemovingHotelRespectsEvenBuildingRules(this)

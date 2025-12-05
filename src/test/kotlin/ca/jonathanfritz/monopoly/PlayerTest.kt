@@ -93,7 +93,6 @@ internal class PlayerTest {
                 money = 5000,
             )
         assertEquals(5000, player.netWorth())
-        assertEquals(200, player.incomeTaxAmount())
     }
 
     @Test
@@ -110,7 +109,6 @@ internal class PlayerTest {
                     ),
             )
         assertEquals(650, player.netWorth())
-        assertEquals(65, player.incomeTaxAmount())
     }
 
     @Test
@@ -126,7 +124,6 @@ internal class PlayerTest {
                     ),
             )
         assertEquals(420, player.netWorth())
-        assertEquals(42, player.incomeTaxAmount())
     }
 
     @Test
@@ -141,7 +138,6 @@ internal class PlayerTest {
                     ),
             )
         assertEquals(570, withHotels.netWorth())
-        assertEquals(57, withHotels.incomeTaxAmount())
     }
 
     @Test

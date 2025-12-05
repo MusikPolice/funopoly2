@@ -196,9 +196,8 @@ Important methods (behavior verified in code):
 - **Ownership & monopoly:**
   - `isOwner(deedClass)`, `getDevelopment(deedClass)`.
   - `hasMonopoly(colourGroup)` computes ownership vs. `ColourGroup.titleDeeds()`.
-- **Wealth & tax:**
+- **Wealth:**
   - `netWorth()` = cash + sum of deed prices + building cost of all current developments.
-  - `incomeTaxAmount()` = `ceil(min(200, 10% of net worth))`.
 - **Jail:**
   - `isPayingGetOutOfJailEarlyFee(amount, board)` – delegates to `strategy.shouldPayJailFee()`.
   - `useGetOutOfJailFreeCard()` – consumes a card if in jail.

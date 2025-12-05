@@ -73,7 +73,7 @@ sealed class Tile {
                     bank.sellDeedToPlayer(deedClass, player, board)
                 } else {
                     println("\t\t${player.name} declines to purchase the property")
-                    
+
                     if (board.config.enableAuctions) {
                         println("\t\tAuction begins for ${deedClass.simpleName}!")
                         val auction = Auction(deed, board.players, bank, board, eventBus)
@@ -121,8 +121,8 @@ sealed class Tile {
             rentOverride: ((Player, Bank, Board) -> Int)?,
             eventBus: EventBus?,
         ) {
-            val amount = player.incomeTaxAmount()
-            bank.charge(amount, player, board, "in income tax")
+            // income tax is a flat $200 as of 2001 rules
+            bank.charge(200, player, board, "in income tax")
         }
     }
 
