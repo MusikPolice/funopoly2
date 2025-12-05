@@ -1,10 +1,9 @@
 # Funopoly2 System Technical Analysis
 
 **Version:** 1.0-SNAPSHOT  
-**Last Reviewed:** December 5, 2025  
+**Last Reviewed:** December 4, 2025  
 **Primary Language:** Kotlin 2.2.x  
 **Target JVM:** 17
-
 
 ---
 
@@ -47,8 +46,8 @@ Implemented and present in code:
 
 Not implemented or explicitly TODO in code:
 
-- Property auctions after declined purchases and on bankruptcy returns (TODO in `Monopoly.kt`, `Tile.kt`, `Bank.kt`).
-- Player trading / negotiation (TODO in `Board.kt`).
+- Property auctions after declined purchases and on bankruptcy returns.
+- Player trading / negotiation.
 - House rules (Free Parking pot, double GO salary, variable starting cash, etc.).
 - Monte Carlo batch runner and cross-game aggregation of stats.
 - Structured logging (stdout `println` is used throughout).
@@ -593,7 +592,7 @@ Typical commands (from `build.gradle.kts`):
 
 ### 6.2 Test Coverage
 
-**Test Count:** 411 tests across 38 test files (verified via `@Test` annotation count).
+**Test Count:** 417 tests across 38 test files (verified via `@Test` annotation count).
 
 **Test Organization:**
 
