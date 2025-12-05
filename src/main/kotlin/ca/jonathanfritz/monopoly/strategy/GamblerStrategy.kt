@@ -160,4 +160,6 @@ class GamblerStrategy(
     }
 
     private fun isRailroad(deed: TitleDeed): Boolean = deed.colourGroup == ColourGroup.Railroads
+
+    override fun toString(): String = "GamblerStrategy (Cookie Monster)"
 }

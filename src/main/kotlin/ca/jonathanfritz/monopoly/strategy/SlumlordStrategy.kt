@@ -219,4 +219,6 @@ class SlumlordStrategy(
         deed.colourGroup in listOf(ColourGroup.Red, ColourGroup.Yellow, ColourGroup.Green, ColourGroup.DarkBlue)
 
     private fun isCheapProperty(deed: TitleDeed): Boolean = deed.colourGroup in listOf(ColourGroup.Brown, ColourGroup.LightBlue)
+
+    override fun toString(): String = "SlumlordStrategy (Oscar)"
 }

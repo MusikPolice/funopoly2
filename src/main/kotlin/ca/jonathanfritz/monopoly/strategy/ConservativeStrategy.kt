@@ -185,4 +185,6 @@ class ConservativeStrategy : PlayerStrategy {
             }.thenByDescending { it.buildingCost }, // Then by building cost (more cash back)
         )
     }
+
+    override fun toString(): String = "ConservativeStrategy (Count von Count)"
 }

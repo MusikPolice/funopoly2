@@ -533,11 +533,14 @@ This section lists issues that are clearly visible in code or TODO comments, not
 - **House rules** are not supported; many potential variants are hard-coded to standard rules.
 - **Bank money limit** is modeled with a finite `money` field, despite rules stating the bank never runs out; whether this matters in practice is unclear without stress tests.
 
-### 7.2 Strategy Abstraction
+### 7.2 Strategy Abstraction ✅ **IMPLEMENTED**
 
-- `Player` encodes both **rules** and **AI strategy** in the same class.
-- No explicit `PlayerStrategy` interface exists; custom strategies require subclassing `Player` and overriding several methods.
-- Development, purchase, and liquidation logic are not easily swappable or composable.
+- ✅ `PlayerStrategy` interface successfully decouples decision-making from player state
+- ✅ 8 distinct strategies implemented (Default, Slumlord, Conservative, HighRent, Gambler, Calculating, Chaotic, Impulsive)
+- ✅ Strategies are easily swappable via Player constructor
+- ✅ Random strategies (Chaotic, Impulsive) accept seeded RNG for deterministic testing
+- ✅ Comprehensive test coverage (100+ strategy tests)
+- See `PlayerPersonasGuide.md` for usage documentation
 
 ### 7.3 Configuration Underuse
 
@@ -569,11 +572,33 @@ This section lists issues that are clearly visible in code or TODO comments, not
 
 These are natural extensions consistent with existing TODOs and architecture; they do *not* claim to be implemented.
 
-### 8.1 Strategy Abstraction
+### 8.1 Strategy System ✅ **COMPLETE**
 
-- Introduce a `PlayerStrategy` interface to decouple decision-making from state:
-  - Purchase decisions, development ordering, liquidation priority, jail fee vs. staying, unmortgage behavior.
-- Allow plugging different strategies per player and across simulations.
+The strategy system has been fully implemented with 8 distinct player strategies:
+
+**Architecture**:
+- `PlayerStrategy` interface defines all decision-making methods
+- `Player` delegates all strategic decisions to injected strategy
+- Strategies are stateless and reusable across players
+- Default methods in interface provide shared helper logic
+
+**Implemented Strategies**:
+1. **DefaultStrategy**: Balanced baseline behavior
+2. **SlumlordStrategy** (Oscar): Cheap property focus, builds to 4 houses
+3. **ConservativeStrategy** (Count): High cash reserves, cautious play
+4. **HighRentStrategy** (Big Bird): Expensive property focus, aggressive development
+5. **GamblerStrategy** (Cookie Monster): Railroad collector, minimal reserves
+6. **CalculatingStrategy** (Bert): ROI-based optimization, dynamic reserves
+7. **ChaoticStrategy** (Ernie): Opponent blocking, unpredictable behavior
+8. **ImpulsiveStrategy** (Elmo): Random decisions, minimal planning
+
+**Key Features**:
+- Seeded RNG support for deterministic testing (Chaotic, Impulsive)
+- Comprehensive test coverage (100+ tests across all strategies)
+- toString() methods for debugging and logging
+- Shared helper methods (wouldCompleteMonopoly, calculateHighestRentOnBoard)
+
+**Documentation**: See `PlayerPersonasGuide.md` for detailed usage guide
 
 ### 8.2 Auctions & Trading
 

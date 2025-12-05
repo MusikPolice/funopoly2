@@ -129,4 +129,6 @@ open class DefaultStrategy : PlayerStrategy {
             property.calculateRent(player, board)
         }
     }
+
+    override fun toString(): String = "DefaultStrategy"
 }

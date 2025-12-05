@@ -152,4 +152,6 @@ class ImpulsiveStrategy(
         // Random order
         return developedProperties.shuffled(rng)
     }
+
+    override fun toString(): String = "ImpulsiveStrategy (Elmo)"
 }

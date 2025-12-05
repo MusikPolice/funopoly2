@@ -236,4 +236,6 @@ class ChaoticStrategy(
                 opponentOwnsInGroup == totalInGroup - 1 && !opponent.isOwner(deed::class)
             }
     }
+
+    override fun toString(): String = "ChaoticStrategy (Ernie)"
 }

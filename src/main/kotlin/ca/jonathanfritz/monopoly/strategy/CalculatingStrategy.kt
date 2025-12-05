@@ -219,4 +219,6 @@ class CalculatingStrategy : PlayerStrategy {
     }
 
     private fun isOptimalProperty(deed: TitleDeed): Boolean = deed.colourGroup in listOf(ColourGroup.Orange, ColourGroup.Red)
+
+    override fun toString(): String = "CalculatingStrategy (Bert)"
 }
