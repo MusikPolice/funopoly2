@@ -144,19 +144,8 @@ class SlumlordStrategy(
             return null
         }
 
-        // Calculate highest rent on board for safety buffer
-        val highestRent =
-            board.players
-                .flatMap { p -> p.deeds.entries.map { (deed, development) -> Triple(deed, development, p) } }
-                .maxOfOrNull { (deed, _, owner) ->
-                    if (deed is Property) {
-                        deed.calculateRent(owner, board)
-                    } else {
-                        0
-                    }
-                } ?: 0
-
-        // Only develop if we have cash above reserve + highest rent
+        // Only develop if we have cash above reserve + highest rent (safety buffer)
+        val highestRent = calculateHighestRentOnBoard(board, player)
         val requiredCash = getMinimumCashReserve(player, board) + highestRent
         if (player.money <= requiredCash) {
             return null
@@ -230,16 +219,4 @@ class SlumlordStrategy(
         deed.colourGroup in listOf(ColourGroup.Red, ColourGroup.Yellow, ColourGroup.Green, ColourGroup.DarkBlue)
 
     private fun isCheapProperty(deed: TitleDeed): Boolean = deed.colourGroup in listOf(ColourGroup.Brown, ColourGroup.LightBlue)
-
-    private fun wouldCompleteMonopoly(
-        deed: TitleDeed,
-        player: Player,
-    ): Boolean {
-        val colorGroup = deed.colourGroup
-        val totalInGroup = colorGroup.titleDeeds().values.count()
-        val ownedInGroup = player.deeds.keys.count { it.colourGroup == colorGroup }
-
-        // Would complete monopoly if we own all but this one property
-        return ownedInGroup == totalInGroup - 1 && !player.isOwner(deed::class)
-    }
 }

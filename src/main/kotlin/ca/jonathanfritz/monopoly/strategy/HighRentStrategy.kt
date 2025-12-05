@@ -177,16 +177,4 @@ class HighRentStrategy(
         deed.colourGroup in listOf(ColourGroup.Red, ColourGroup.Yellow, ColourGroup.Green, ColourGroup.DarkBlue)
 
     private fun isCheapProperty(deed: TitleDeed): Boolean = deed.colourGroup in listOf(ColourGroup.Brown, ColourGroup.LightBlue)
-
-    private fun wouldCompleteMonopoly(
-        deed: TitleDeed,
-        player: Player,
-    ): Boolean {
-        val colorGroup = deed.colourGroup
-        val totalInGroup = colorGroup.titleDeeds().values.count()
-        val ownedInGroup = player.deeds.keys.count { it.colourGroup == colorGroup }
-
-        // Would complete monopoly if we own all but this one property
-        return ownedInGroup == totalInGroup - 1 && !player.isOwner(deed::class)
-    }
 }

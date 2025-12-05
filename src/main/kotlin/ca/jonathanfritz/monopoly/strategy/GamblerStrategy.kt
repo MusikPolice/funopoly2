@@ -160,16 +160,4 @@ class GamblerStrategy(
     }
 
     private fun isRailroad(deed: TitleDeed): Boolean = deed.colourGroup == ColourGroup.Railroads
-
-    private fun wouldCompleteMonopoly(
-        deed: TitleDeed,
-        player: Player,
-    ): Boolean {
-        val colorGroup = deed.colourGroup
-        val totalInGroup = colorGroup.titleDeeds().values.count()
-        val ownedInGroup = player.deeds.keys.count { it.colourGroup == colorGroup }
-
-        // Would complete monopoly if we own all but this one property
-        return ownedInGroup == totalInGroup - 1 && !player.isOwner(deed::class)
-    }
 }

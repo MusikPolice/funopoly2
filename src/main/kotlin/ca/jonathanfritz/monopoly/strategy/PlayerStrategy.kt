@@ -171,4 +171,45 @@ interface PlayerStrategy {
         player: Player,
         board: Board
     ): List<Property>
+
+    /**
+     * Helper method to check if purchasing a deed would complete a monopoly.
+     *
+     * @param deed The deed being considered
+     * @param player The player who would purchase it
+     * @return true if purchasing this deed would complete a color group monopoly
+     */
+    fun wouldCompleteMonopoly(
+        deed: TitleDeed,
+        player: Player,
+    ): Boolean {
+        val colorGroup = deed.colourGroup
+        val totalInGroup = colorGroup.titleDeeds().values.count()
+        val ownedInGroup = player.deeds.keys.count { it.colourGroup == colorGroup }
+
+        // Would complete monopoly if we own all but this one property
+        return ownedInGroup == totalInGroup - 1 && !player.isOwner(deed::class)
+    }
+
+    /**
+     * Helper method to calculate the highest rent currently on the board.
+     * Useful for determining cash reserves and risk assessment.
+     * Excludes properties owned by the specified player (since you can't pay rent to yourself).
+     *
+     * @param board Current board state
+     * @param player The player to exclude from rent calculations (typically the current player)
+     * @return The highest rent amount any opponent could charge, or 0 if no opponent properties are developed
+     */
+    fun calculateHighestRentOnBoard(board: Board, player: Player): Int {
+        return board.players
+            .filter { it != player } // Exclude the current player's properties
+            .flatMap { p -> p.deeds.entries.map { (deed, development) -> Triple(deed, development, p) } }
+            .maxOfOrNull { (deed, _, owner) ->
+                if (deed is Property) {
+                    deed.calculateRent(owner, board)
+                } else {
+                    0
+                }
+            } ?: 0
+    }
 }
