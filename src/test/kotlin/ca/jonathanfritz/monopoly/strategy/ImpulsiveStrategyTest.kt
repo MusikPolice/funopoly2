@@ -91,6 +91,48 @@ internal class ImpulsiveStrategyTest {
     }
 
     @Test
+    fun `does not bid more than available cash in auction`() {
+        val player = Player("Elmo", money = 50, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Player has $50, try to bid on Tennessee Avenue ($180 list price)
+        // Impulsive would normally bid up to 0.5x-1.5x = $90-$270, but only has $50
+        val bid = strategy.calculateBidIncrease(
+            deed = TennesseeAvenue(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        // Should either drop out (null) or bid at most $50
+        if (bid != null) {
+            assertTrue(bid <= 50, "Should not bid more than available cash ($50), but bid $bid")
+        }
+    }
+
+    @Test
+    fun `drops out of auction when minimum bid exceeds available cash`() {
+        val player = Player("Elmo", money = 50, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Player has $50, minimum bid is $100
+        val bid = strategy.calculateBidIncrease(
+            deed = TennesseeAvenue(),
+            currentBid = 90,
+            minimumBid = 100,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNull(bid, "Should drop out when minimum bid exceeds available cash")
+    }
+
+    @Test
     fun `valuateProperty returns random value between 0_5x and 2_0x base value`() {
         val player = Player("Elmo", money = 1500, strategy = strategy)
         val board = Board(listOf(player), Bank())

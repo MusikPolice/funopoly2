@@ -112,6 +112,48 @@ internal class CalculatingStrategyTest {
     }
 
     @Test
+    fun `does not bid more than available cash minus reserve in auction`() {
+        val player = Player("Bert", money = 150, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Player has $150, reserve is $100, so only $50 available for bidding
+        val bid = strategy.calculateBidIncrease(
+            deed = BalticAvenue(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        // Should either drop out (null) or bid at most $50 (money - reserve)
+        if (bid != null) {
+            assertTrue(bid <= 50, "Should not bid more than available cash minus reserve ($50), but bid $bid")
+        }
+    }
+
+    @Test
+    fun `drops out of auction when minimum bid exceeds available cash minus reserve`() {
+        val player = Player("Bert", money = 150, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Player has $150, reserve is $100, so only $50 available
+        // Minimum bid is $100
+        val bid = strategy.calculateBidIncrease(
+            deed = TennesseeAvenue(),
+            currentBid = 90,
+            minimumBid = 100,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNull(bid, "Should drop out when minimum bid exceeds available cash minus reserve")
+    }
+
+    @Test
     fun `valuateProperty gives Orange properties 20 percent bonus`() {
         val player = Player("Bert", money = 1500, strategy = strategy)
         val board = Board(listOf(player), Bank())

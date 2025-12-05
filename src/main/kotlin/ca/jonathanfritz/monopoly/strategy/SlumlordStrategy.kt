@@ -59,12 +59,16 @@ class SlumlordStrategy(
             }
 
         // Add 20% bonus if completing monopoly
-        val maxBid =
+        val maxBidByValue =
             if (wouldCompleteMonopoly(deed, player)) {
                 (baseMaxBid * 1.2).toInt()
             } else {
                 baseMaxBid
             }
+        
+        // Can't bid more than we can afford (keep minimum reserve)
+        val reserve = getMinimumCashReserve(player, board)
+        val maxBid = minOf(maxBidByValue, player.money - reserve)
 
         // Drop out if minimum bid exceeds our max
         if (minimumBid > maxBid) {

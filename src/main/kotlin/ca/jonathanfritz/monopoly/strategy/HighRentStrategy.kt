@@ -51,12 +51,16 @@ class HighRentStrategy(
         board: Board,
     ): Int? {
         // Calculate internal max based on monopoly completion
-        val maxBid =
+        val maxBidByValue =
             if (wouldCompleteMonopoly(deed, player)) {
                 (deed.price * 1.5).toInt()
             } else {
                 (deed.price * 1.2).toInt()
             }
+        
+        // Can't bid more than we can afford (keep minimum reserve)
+        val reserve = getMinimumCashReserve(player, board)
+        val maxBid = minOf(maxBidByValue, player.money - reserve)
 
         // Drop out if minimum bid exceeds our max
         if (minimumBid > maxBid) {

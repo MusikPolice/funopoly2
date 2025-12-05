@@ -33,7 +33,7 @@ class GamblerStrategy(
         bank: Bank,
         board: Board,
     ): Boolean {
-        // Buy everything affordable
+        // Buy everything affordable - list price is always a good deal
         return player.money >= deed.price
     }
 
@@ -53,7 +53,13 @@ class GamblerStrategy(
                 rng.nextDouble(1.5, 2.0)
             }
 
-        val maxBid = (deed.price * maxMultiplier).toInt()
+        val maxBidByValue = (deed.price * maxMultiplier).toInt()
+        
+        // Can't bid more than we can afford (no cash reserve for gambler)
+        val maxBidByMoney = player.money
+        
+        // Take the lower of value-based max and affordability max
+        val maxBid = minOf(maxBidByValue, maxBidByMoney)
 
         // Drop out if minimum bid exceeds our max
         if (minimumBid > maxBid) {

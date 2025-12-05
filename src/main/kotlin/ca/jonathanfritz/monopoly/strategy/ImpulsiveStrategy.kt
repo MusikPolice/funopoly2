@@ -49,7 +49,10 @@ class ImpulsiveStrategy(
     ): Int? {
         // Random max between 50% and 150% of deed price
         val maxMultiplier = rng.nextDouble(0.5, 1.5)
-        val maxBid = (deed.price * maxMultiplier).toInt()
+        val maxBidByValue = (deed.price * maxMultiplier).toInt()
+        
+        // Can't bid more than we can afford (no cash reserve for impulsive)
+        val maxBid = minOf(maxBidByValue, player.money)
 
         // Drop out if minimum bid exceeds our max
         if (minimumBid > maxBid) {

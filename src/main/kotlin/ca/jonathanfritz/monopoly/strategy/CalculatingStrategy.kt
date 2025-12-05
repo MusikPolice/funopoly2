@@ -48,12 +48,16 @@ class CalculatingStrategy : PlayerStrategy {
         val valuation = valuateProperty(deed, player, bank, board)
 
         // Allow up to 110% of strategic value, or higher for monopoly completion
-        val maxBid =
+        val maxBidByValue =
             if (wouldCompleteMonopoly(deed, player)) {
                 (valuation.strategicValue * 1.5).toInt()
             } else {
                 (valuation.strategicValue * 1.1).toInt()
             }
+        
+        // Can't bid more than we can afford (keep minimum reserve)
+        val reserve = getMinimumCashReserve(player, board)
+        val maxBid = minOf(maxBidByValue, player.money - reserve)
 
         // Drop out if minimum bid exceeds our max
         if (minimumBid > maxBid) {
