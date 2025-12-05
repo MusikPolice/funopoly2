@@ -60,7 +60,7 @@ internal class ImpulsiveStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // BalticAvenue price 60, max bid 50-150% = 30-90
-        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 20, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 20, 21, player, Bank(), board)
 
         assertNotNull(nextBid)
         assertTrue(nextBid!! > 20) // Should increment
@@ -73,9 +73,21 @@ internal class ImpulsiveStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // BalticAvenue price 60, max bid 50-150% = 30-90
-        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 100, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 100, 101, player, Bank(), board)
 
         assertNull(nextBid)
+    }
+
+    @Test
+    fun `does not buy property when cannot afford it`() {
+        val player = Player("Elmo", money = 50, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Boardwalk costs $400, player only has $50
+        val shouldBuy = strategy.shouldBuyProperty(Boardwalk(), player, bank, board)
+        
+        assertFalse(shouldBuy, "Should not buy property if cannot afford it")
     }
 
     @Test

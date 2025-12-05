@@ -47,6 +47,12 @@ sealed class GameEvent {
     data class PropertyOffered(val player: Player, val deed: TitleDeed, val price: Int) : GameEvent()
     data class PurchaseDecision(val player: Player, val deed: TitleDeed, val decision: Boolean) : GameEvent() // true = buy, false = decline
 
+    // Auction Events
+    data class AuctionStarted(val deed: TitleDeed, val participants: List<Player>, val startingBid: Int) : GameEvent()
+    data class AuctionBid(val player: Player, val deed: TitleDeed, val bidAmount: Int, val previousBid: Int) : GameEvent()
+    data class AuctionPlayerDropped(val player: Player, val deed: TitleDeed, val finalBid: Int) : GameEvent()
+    data class AuctionEnded(val deed: TitleDeed, val winner: Player?, val winningBid: Int?, val participantCount: Int, val totalRounds: Int) : GameEvent()
+
     // Bankruptcy Events
     data class PlayerBankrupted(val player: Player, val creditor: Any, val round: Int, val netWorth: Int) : GameEvent() // creditor: Player or Bank
     data class AssetTransferred(val from: Player, val to: Any, val asset: String, val value: Int) : GameEvent() // to: Player or Bank

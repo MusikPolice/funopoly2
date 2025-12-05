@@ -72,8 +72,13 @@ sealed class Tile {
                 if (player.isBuying(deed, bank, board)) {
                     bank.sellDeedToPlayer(deedClass, player, board)
                 } else {
-                    // TODO: a wild auction appears!
                     println("\t\t${player.name} declines to purchase the property")
+                    
+                    if (board.config.enableAuctions) {
+                        println("\t\tAuction begins for ${deedClass.simpleName}!")
+                        val auction = Auction(deed, board.players, bank, board, eventBus)
+                        auction.conduct()
+                    }
                 }
             }
         }

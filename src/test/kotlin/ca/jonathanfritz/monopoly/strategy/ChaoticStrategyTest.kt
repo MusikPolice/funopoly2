@@ -53,7 +53,7 @@ internal class ChaoticStrategyTest {
         val board = Board(listOf(player, opponent), Bank())
 
         // NewYorkAvenue blocks opponent's Orange monopoly
-        val nextBid = strategy.calculateBidIncrease(NewYorkAvenue(), 200, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(NewYorkAvenue(), 200, 201, player, Bank(), board)
 
         assertNotNull(nextBid, "Should bid when blocking opponent")
         assertTrue(nextBid!! > 200, "Should increase bid")
@@ -65,7 +65,7 @@ internal class ChaoticStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // Bid very high to exceed internal max
-        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 1000, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 1000, 1001, player, Bank(), board)
 
         assertNull(nextBid, "Should stop bidding when exceeding internal max")
     }
@@ -76,8 +76,8 @@ internal class ChaoticStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // Start with low bid to ensure we're within internal max
-        val bid1 = strategy.calculateBidIncrease(StJamesPlace(), 50, player, Bank(), board)
-        val bid2 = strategy.calculateBidIncrease(TennesseeAvenue(), 50, player, Bank(), board)
+        val bid1 = strategy.calculateBidIncrease(StJamesPlace(), 50, 51, player, Bank(), board)
+        val bid2 = strategy.calculateBidIncrease(TennesseeAvenue(), 50, 51, player, Bank(), board)
 
         // With seeded random, at least one should return a bid (might be null if internal max is low)
         // Just verify the method works and returns reasonable values when it does bid
@@ -87,6 +87,18 @@ internal class ChaoticStrategyTest {
         if (bid2 != null) {
             assertTrue(bid2 > 50, "Bid should increase from current bid")
         }
+    }
+
+    @Test
+    fun `does not buy property when cannot afford it`() {
+        val player = Player("Ernie", money = 50, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Boardwalk costs $400, player only has $50
+        val shouldBuy = strategy.shouldBuyProperty(Boardwalk(), player, bank, board)
+        
+        assertFalse(shouldBuy, "Should not buy property if cannot afford it")
     }
 
     @Test

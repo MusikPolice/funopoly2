@@ -31,7 +31,7 @@ class Monopoly(
 
     private val players: List<Player> = createPlayers(config, eventBus)
 
-    private val board: Board = Board(players, bank, rng, eventBus = eventBus)
+    private val board: Board = Board(players, bank, rng, eventBus = eventBus, config = config)
     private val gameStatistics: GameStatistics? =
         if (config.collectStatistics && eventBus != null) {
             GameStatistics().also { eventBus.register(it) }

@@ -169,6 +169,16 @@ open class Player(
         return decision
     }
 
+    fun calculateBidIncrease(
+        deed: TitleDeed,
+        currentBid: Int,
+        minimumBid: Int,
+        bank: Bank,
+        board: Board,
+    ): Int? {
+        return strategy.calculateBidIncrease(deed, currentBid, minimumBid, this, bank, board)
+    }
+
     fun shouldUnmortgageProperty(
         deed: TitleDeed,
         mortgageValue: Int,

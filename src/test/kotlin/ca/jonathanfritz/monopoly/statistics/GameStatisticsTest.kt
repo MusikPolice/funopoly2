@@ -484,4 +484,65 @@ internal class GameStatisticsTest {
         assertNotNull(player1Stats)
         assertEquals("DefaultStrategy", player1Stats!!.strategyName)
     }
+
+    @Test
+    fun `tracks auction events`() {
+        val boardwalk = Property.Boardwalk()
+        val parkPlace = Property.ParkPlace()
+        
+        // Auction 1: Successful
+        stats.onEvent(GameEvent.AuctionStarted(boardwalk, listOf(player1, player2), 10))
+        stats.onEvent(GameEvent.AuctionBid(player1, boardwalk, 50, 10))
+        stats.onEvent(GameEvent.AuctionBid(player2, boardwalk, 75, 50))
+        stats.onEvent(GameEvent.AuctionPlayerDropped(player1, boardwalk, 50))
+        stats.onEvent(GameEvent.AuctionEnded(boardwalk, player2, 75, 2, 2))
+        
+        // Auction 2: Failed (no winner)
+        stats.onEvent(GameEvent.AuctionStarted(parkPlace, listOf(player1, player2), 10))
+        stats.onEvent(GameEvent.AuctionPlayerDropped(player1, parkPlace, 10))
+        stats.onEvent(GameEvent.AuctionPlayerDropped(player2, parkPlace, 10))
+        stats.onEvent(GameEvent.AuctionEnded(parkPlace, null, null, 2, 1))
+
+        val report = stats.generateReport()
+
+        // Verify auction statistics
+        assertEquals(2, report.auctionStatistics.totalAuctions)
+        assertEquals(1, report.auctionStatistics.successfulAuctions)
+        assertEquals(1, report.auctionStatistics.failedAuctions)
+        assertEquals(2, report.auctionStatistics.totalBids)
+        assertEquals(1.0, report.auctionStatistics.averageBidsPerAuction, 0.01)
+        assertEquals(75.0, report.auctionStatistics.averageWinningBid, 0.01)
+        assertEquals(75, report.auctionStatistics.totalAuctionSpending)
+        
+        // Verify highest/lowest winning bids
+        assertNotNull(report.auctionStatistics.highestWinningBid)
+        assertEquals("Boardwalk", report.auctionStatistics.highestWinningBid!!.property)
+        assertEquals("Player2", report.auctionStatistics.highestWinningBid!!.winner)
+        assertEquals(75, report.auctionStatistics.highestWinningBid!!.winningBid)
+        
+        assertNotNull(report.auctionStatistics.lowestWinningBid)
+        assertEquals("Boardwalk", report.auctionStatistics.lowestWinningBid!!.property)
+        
+        // Verify player participation
+        assertEquals(1, report.auctionStatistics.playerAuctionWins["Player2"])
+        assertEquals(1, report.auctionStatistics.playerAuctionParticipation["Player1"])
+        assertEquals(1, report.auctionStatistics.playerAuctionParticipation["Player2"])
+    }
+
+    @Test
+    fun `handles empty auction statistics`() {
+        val report = stats.generateReport()
+
+        assertEquals(0, report.auctionStatistics.totalAuctions)
+        assertEquals(0, report.auctionStatistics.successfulAuctions)
+        assertEquals(0, report.auctionStatistics.failedAuctions)
+        assertEquals(0, report.auctionStatistics.totalBids)
+        assertEquals(0.0, report.auctionStatistics.averageBidsPerAuction, 0.01)
+        assertEquals(0.0, report.auctionStatistics.averageWinningBid, 0.01)
+        assertEquals(0, report.auctionStatistics.totalAuctionSpending)
+        assertNull(report.auctionStatistics.highestWinningBid)
+        assertNull(report.auctionStatistics.lowestWinningBid)
+        assertTrue(report.auctionStatistics.playerAuctionWins.isEmpty())
+        assertTrue(report.auctionStatistics.playerAuctionParticipation.isEmpty())
+    }
 }

@@ -22,6 +22,7 @@ internal class StatisticsFormatterTest {
         assertTrue(output.contains("PROPERTY STATISTICS"))
         assertTrue(output.contains("MOVEMENT STATISTICS"))
         assertTrue(output.contains("DEVELOPMENT STATISTICS"))
+        assertTrue(output.contains("AUCTION STATISTICS"))
         
         // Verify data is included
         assertTrue(output.contains("Winner: Player1"))
@@ -45,6 +46,7 @@ internal class StatisticsFormatterTest {
         assertTrue(output.contains("\"propertyStatistics\":"))
         assertTrue(output.contains("\"movementStatistics\":"))
         assertTrue(output.contains("\"developmentStatistics\":"))
+        assertTrue(output.contains("\"auctionStatistics\":"))
         
         // Verify data is included
         assertTrue(output.contains("\"winner\": \"Player1\""))
@@ -61,12 +63,15 @@ internal class StatisticsFormatterTest {
             financialSummary = FinancialSummary(0, 0, 0, null, 0.0),
             movementStatistics = MovementStatistics(0, 0.0, 0, emptyMap(), null, null),
             developmentStatistics = DevelopmentStatistics(0, 0, 0, 0, emptyMap(), null),
+            auctionStatistics = AuctionStatistics(0, 0, 0, 0, 0.0, 0.0, null, null, 0, emptyMap(), emptyMap()),
         )
         
         val output = StatisticsFormatter.formatConsole(report)
         
         assertTrue(output.contains("GAME STATISTICS REPORT"))
         assertTrue(output.contains("Winner: None"))
+        assertTrue(output.contains("AUCTION STATISTICS"))
+        assertTrue(output.contains("Total Auctions: 0"))
     }
     
     @Test
@@ -74,12 +79,13 @@ internal class StatisticsFormatterTest {
         val report = StatisticsReport(
             gameSummary = GameSummary(5, null, "test", 2, 0),
             playerStatistics = listOf(
-                PlayerStatistics("Player1", "TestStrategy", 100, 200, 3, emptyList(), emptyList(), 500, 2, 1, 4, 3, 2, null, emptyList(), 5, 0.6, 1, 1)
+                PlayerStatistics("Player1", "TestStrategy", 100, 200, 3, emptyList(), emptyList(), 500, 2, 1, 4, 3, 2, null, emptyList(), 5, 0.6, 1, 1, 0, emptyList())
             ),
             propertyStatistics = PropertyStatistics(3, 1, 0, null, emptyMap()),
             financialSummary = FinancialSummary(300, 400, 200, null, 50.0),
             movementStatistics = MovementStatistics(10, 7.0, 2, emptyMap(), null, null),
             developmentStatistics = DevelopmentStatistics(2, 1, 0, 0, emptyMap(), null),
+            auctionStatistics = AuctionStatistics(0, 0, 0, 0, 0.0, 0.0, null, null, 0, emptyMap(), emptyMap()),
         )
         
         val output = StatisticsFormatter.formatJson(report)
@@ -87,6 +93,8 @@ internal class StatisticsFormatterTest {
         assertTrue(output.contains("\"winner\": null"))
         assertTrue(output.contains("\"bankruptcyRound\": null"))
         assertTrue(output.contains("\"largestRentPayment\": null"))
+        assertTrue(output.contains("\"auctionStatistics\":"))
+        assertTrue(output.contains("\"totalAuctions\": 0"))
     }
     
     private fun createSampleReport(): StatisticsReport {
@@ -98,18 +106,20 @@ internal class StatisticsFormatterTest {
             propertiesPurchased = 3,
             propertiesPurchasedList = listOf("Boardwalk", "ParkPlace", "MarvinGardens"),
             propertiesAcquiredViaBankruptcy = emptyList(),
-            totalPropertySpending = 500,
+            totalPropertySpending = 1000,
             housesBuilt = 2,
             hotelsBuilt = 1,
             timesPassedGo = 4,
             doublesRolled = 3,
             jailVisits = 2,
             bankruptcyRound = null,
-            monopoliesAcquired = emptyList(),
+            monopoliesAcquired = listOf(ColourGroup.DarkBlue),
             propertiesOffered = 5,
             purchaseRate = 0.6,
             jailFeePaidCount = 1,
             jailWaitedCount = 1,
+            propertiesWonAtAuction = 0,
+            propertiesWonAtAuctionList = emptyList(),
         )
         
         val player2Stats = PlayerStatistics(
@@ -132,6 +142,8 @@ internal class StatisticsFormatterTest {
             purchaseRate = 0.5,
             jailFeePaidCount = 0,
             jailWaitedCount = 1,
+            propertiesWonAtAuction = 0,
+            propertiesWonAtAuctionList = emptyList(),
         )
         
         return StatisticsReport(
@@ -172,6 +184,19 @@ internal class StatisticsFormatterTest {
                 totalHotelsSold = 0,
                 developmentByColorGroup = mapOf(ColourGroup.DarkBlue to 2, ColourGroup.Red to 2),
                 mostDevelopedColorGroup = ColorGroupInfo(ColourGroup.DarkBlue, 2),
+            ),
+            auctionStatistics = AuctionStatistics(
+                totalAuctions = 3,
+                successfulAuctions = 2,
+                failedAuctions = 1,
+                totalBids = 8,
+                averageBidsPerAuction = 2.67,
+                averageWinningBid = 125.0,
+                highestWinningBid = AuctionInfo("Boardwalk", "Player1", 200, 2),
+                lowestWinningBid = AuctionInfo("BalticAvenue", "Player2", 50, 2),
+                totalAuctionSpending = 250,
+                playerAuctionWins = mapOf("Player1" to 1, "Player2" to 1),
+                playerAuctionParticipation = mapOf("Player1" to 5, "Player2" to 3),
             ),
         )
     }

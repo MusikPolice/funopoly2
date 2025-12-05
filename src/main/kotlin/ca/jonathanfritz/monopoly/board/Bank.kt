@@ -112,11 +112,12 @@ class Bank(
         deedClass: KClass<out TitleDeed>,
         player: Player,
         board: Board,
+        auctionPrice: Int? = null,
     ) {
         val deed =
             titleDeeds.firstOrNull { it::class == deedClass }
                 ?: throw PropertyOwnershipException("Bank does not have ${deedClass.simpleName}")
-        val purchasePrice = validatePlayerCanAffordDeed(player, deed)
+        val purchasePrice = auctionPrice ?: validatePlayerCanAffordDeed(player, deed)
         charge(purchasePrice, player, board, "to buy ${deedClass.simpleName}")
         titleDeeds.remove(deed)
         player.deeds[deed] = Player.Development()

@@ -24,6 +24,18 @@ data class Config(
 
     // random seed for deterministic gameplay (null = non-deterministic)
     val randomSeed: Long? = null,
+
+    // whether to conduct auctions when players decline to purchase properties
+    val enableAuctions: Boolean = true,
+
+    // starting bid for property auctions
+    val auctionStartingBid: Int = 10,
+
+    // minimum bid increment for property auctions
+    val auctionMinimumIncrement: Int = 1,
+
+    // maximum number of auction rounds before terminating
+    val auctionMaxRounds: Int = 100,
 )
 
 /**

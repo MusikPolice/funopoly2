@@ -76,7 +76,7 @@ internal class SlumlordStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // BalticAvenue price 60, 80% = 48
-        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 49, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 49, 50, player, Bank(), board)
 
         assertNull(nextBid)
     }
@@ -87,7 +87,7 @@ internal class SlumlordStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // BalticAvenue price 60, 80% = 48
-        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 30, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 30, 31, player, Bank(), board)
 
         assertNotNull(nextBid)
         assertTrue(nextBid!! in 40..48) // Increment by 10-20
@@ -99,7 +99,7 @@ internal class SlumlordStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // ParkPlace price 350, 50% = 175
-        val nextBid = strategy.calculateBidIncrease(ParkPlace(), 176, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(ParkPlace(), 176, 177, player, Bank(), board)
 
         assertNull(nextBid)
     }
@@ -111,7 +111,7 @@ internal class SlumlordStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // ParkPlace price 350, 50% * 1.2 = 210
-        val nextBid = strategy.calculateBidIncrease(ParkPlace(), 200, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(ParkPlace(), 200, 201, player, Bank(), board)
 
         assertNotNull(nextBid) // Should still be bidding
     }
@@ -125,6 +125,21 @@ internal class SlumlordStrategyTest {
 
         val baseValue = PropertyValuation.calculateBaseValue(BalticAvenue(), player)
         assertEquals((baseValue.strategicValue * 1.5).toInt(), valuation.strategicValue)
+    }
+
+    @Test
+    fun `does not buy expensive property when completing monopoly but cannot afford it`() {
+        val player = Player("Oscar", money = 600, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Player already owns Park Place (expensive Dark Blue property) - costs $350
+        bank.sellDeedToPlayer(ParkPlace::class, player, board)
+        
+        // Boardwalk costs $400, player doesn't have enough even though it completes monopoly
+        val shouldBuy = strategy.shouldBuyProperty(Boardwalk(), player, bank, board)
+        
+        assertFalse(shouldBuy, "Should not buy expensive property that completes monopoly if cannot afford it")
     }
 
     @Test

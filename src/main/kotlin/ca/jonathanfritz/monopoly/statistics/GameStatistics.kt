@@ -57,6 +57,14 @@ class GameStatistics : GameEventListener {
     // Bankruptcy Statistics
     private val bankruptcies = mutableListOf<BankruptcyEvent>()
     
+    // Monopoly tracking - map of player to set of color groups they achieved monopoly on
+    private val monopoliesAcquired = mutableMapOf<Player, MutableSet<ColourGroup>>()
+    
+    // Auction Statistics
+    private val auctions = mutableListOf<AuctionEvent>()
+    private val auctionBids = mutableListOf<AuctionBidEvent>()
+    private val auctionDropouts = mutableListOf<AuctionDropoutEvent>()
+    
     // Decision Metrics (Strategy-related)
     private val propertiesOfferedToPlayers = mutableMapOf<Player, Int>() // Times landed on unowned property
     private val playerStrategies = mutableMapOf<Player, String>() // Player -> strategy name
@@ -85,6 +93,10 @@ class GameStatistics : GameEventListener {
             is GameEvent.CardDrawn -> handleCardDrawn(event)
             is GameEvent.PropertyOffered -> handlePropertyOffered(event)
             is GameEvent.PurchaseDecision -> handlePurchaseDecision(event)
+            is GameEvent.AuctionStarted -> handleAuctionStarted(event)
+            is GameEvent.AuctionBid -> handleAuctionBid(event)
+            is GameEvent.AuctionPlayerDropped -> handleAuctionPlayerDropped(event)
+            is GameEvent.AuctionEnded -> handleAuctionEnded(event)
             is GameEvent.PlayerBankrupted -> handlePlayerBankrupted(event)
             is GameEvent.AssetTransferred -> handleAssetTransferred(event)
             is GameEvent.GameEnded -> handleGameEnded(event)
@@ -175,6 +187,11 @@ class GameStatistics : GameEventListener {
                 price = event.price,
             ),
         )
+        
+        // Check if this purchase completed a monopoly
+        if (event.player.hasMonopoly(event.deed.colourGroup)) {
+            monopoliesAcquired.getOrPut(event.player) { mutableSetOf() }.add(event.deed.colourGroup)
+        }
     }
 
     private fun handlePropertyMortgaged(event: GameEvent.PropertyMortgaged) {
@@ -268,6 +285,43 @@ class GameStatistics : GameEventListener {
         // for the current statistics model
     }
 
+    private fun handleAuctionStarted(event: GameEvent.AuctionStarted) {
+        // Track auction initiation - will be completed when AuctionEnded fires
+    }
+
+    private fun handleAuctionBid(event: GameEvent.AuctionBid) {
+        auctionBids.add(
+            AuctionBidEvent(
+                player = event.player,
+                deed = event.deed,
+                bidAmount = event.bidAmount,
+                previousBid = event.previousBid,
+            ),
+        )
+    }
+
+    private fun handleAuctionPlayerDropped(event: GameEvent.AuctionPlayerDropped) {
+        auctionDropouts.add(
+            AuctionDropoutEvent(
+                player = event.player,
+                deed = event.deed,
+                finalBid = event.finalBid,
+            ),
+        )
+    }
+
+    private fun handleAuctionEnded(event: GameEvent.AuctionEnded) {
+        auctions.add(
+            AuctionEvent(
+                deed = event.deed,
+                winner = event.winner,
+                winningBid = event.winningBid,
+                participantCount = event.participantCount,
+                totalRounds = event.totalRounds,
+            ),
+        )
+    }
+
     private fun handleGameEnded(event: GameEvent.GameEnded) {
         gameEnded = true
         winner = event.winner
@@ -281,6 +335,14 @@ class GameStatistics : GameEventListener {
      */
     fun generateReport(): StatisticsReport {
         val snapshot = snapshot()
+        
+        // Build auction statistics first (needed for player stats)
+        val successfulAuctions = auctions.filter { it.winner != null }
+        val failedAuctions = auctions.filter { it.winner == null }
+        
+        val playerAuctionWins = successfulAuctions
+            .groupBy { it.winner?.name ?: "Unknown" }
+            .mapValues { it.value.size }
         
         // Build player statistics
         val allPlayers = (rentPayments.map { it.payer } + 
@@ -327,18 +389,26 @@ class GameStatistics : GameEventListener {
         }
         
         val playerStats = allPlayers.map { player ->
-            // Calculate monopolies based on final ownership
-            val playerFinalDeeds = propertyOwnership.filter { it.value == player }.keys
-            val playerDeedClasses = playerFinalDeeds.map { it::class }.toSet()
-            val monopolies = ColourGroup.entries.filter { colorGroup ->
-                val allDeedsInGroup = colorGroup.titleDeeds().keys
-                // Player has monopoly if they own all deeds in this color group
-                allDeedsInGroup.isNotEmpty() && allDeedsInGroup.all { deedClass -> deedClass in playerDeedClasses }
-            }
+            // Get monopolies that were acquired during the game (not based on final ownership)
+            val monopolies = monopoliesAcquired[player]?.toList() ?: emptyList()
             
-            // Get list of properties purchased directly
-            val purchasedList = propertyPurchases
-                .filter { it.player == player }
+            // Get auction wins for this player
+            val auctionWinsCount = playerAuctionWins[player.name] ?: 0
+            val auctionWinsList = successfulAuctions
+                .filter { it.winner == player }
+                .map { it.deed::class.simpleName ?: "Unknown" }
+            
+            // Get auction win deed classes to filter them out from direct purchases
+            val auctionWinDeedClasses = successfulAuctions
+                .filter { it.winner == player }
+                .map { it.deed::class }
+                .toSet()
+            
+            // Get list of properties purchased directly (not via auction)
+            val allPurchases = propertyPurchases.filter { it.player == player }
+            val directPurchases = allPurchases.filter { it.deed::class !in auctionWinDeedClasses }
+            val directPurchasesCount = directPurchases.size
+            val purchasedList = directPurchases
                 .map { it.deed::class.simpleName ?: "Unknown" }
             
             // Get list of properties acquired via bankruptcy
@@ -347,9 +417,10 @@ class GameStatistics : GameEventListener {
                 ?: emptyList()
             
             val propertiesOffered = propertiesOfferedToPlayers[player] ?: 0
-            val propertiesPurchasedCount = propertyPurchases.count { it.player == player }
+            val propertiesPurchasedCount = directPurchasesCount
+            // Purchase rate should only consider direct purchases vs offers (not auctions)
             val purchaseRate = if (propertiesOffered > 0) {
-                propertiesPurchasedCount.toDouble() / propertiesOffered
+                directPurchasesCount.toDouble() / propertiesOffered
             } else {
                 0.0
             }
@@ -377,6 +448,8 @@ class GameStatistics : GameEventListener {
                 purchaseRate = purchaseRate,
                 jailFeePaidCount = jailFeePaid,
                 jailWaitedCount = jailWaited,
+                propertiesWonAtAuction = auctionWinsCount,
+                propertiesWonAtAuctionList = auctionWinsList,
             )
         }
         
@@ -448,6 +521,55 @@ class GameStatistics : GameEventListener {
             mostDevelopedColorGroup = mostDeveloped,
         )
         
+        // Build remaining auction statistics (successfulAuctions and failedAuctions already calculated above)
+        val highestWinningBid = successfulAuctions.maxByOrNull { it.winningBid ?: 0 }?.let {
+            AuctionInfo(
+                property = it.deed::class.simpleName ?: "Unknown",
+                winner = it.winner?.name ?: "Unknown",
+                winningBid = it.winningBid ?: 0,
+                participantCount = it.participantCount,
+            )
+        }
+        
+        val lowestWinningBid = successfulAuctions.minByOrNull { it.winningBid ?: Int.MAX_VALUE }?.let {
+            AuctionInfo(
+                property = it.deed::class.simpleName ?: "Unknown",
+                winner = it.winner?.name ?: "Unknown",
+                winningBid = it.winningBid ?: 0,
+                participantCount = it.participantCount,
+            )
+        }
+        
+        val avgWinningBid = if (successfulAuctions.isNotEmpty()) {
+            successfulAuctions.mapNotNull { it.winningBid }.average()
+        } else {
+            0.0
+        }
+        
+        val avgBidsPerAuction = if (auctions.isNotEmpty()) {
+            auctionBids.size.toDouble() / auctions.size
+        } else {
+            0.0
+        }
+        
+        val playerAuctionParticipation = auctionBids
+            .groupBy { it.player.name }
+            .mapValues { it.value.size }
+        
+        val auctionStats = AuctionStatistics(
+            totalAuctions = auctions.size,
+            successfulAuctions = successfulAuctions.size,
+            failedAuctions = failedAuctions.size,
+            totalBids = auctionBids.size,
+            averageBidsPerAuction = avgBidsPerAuction,
+            averageWinningBid = avgWinningBid,
+            highestWinningBid = highestWinningBid,
+            lowestWinningBid = lowestWinningBid,
+            totalAuctionSpending = successfulAuctions.mapNotNull { it.winningBid }.sum(),
+            playerAuctionWins = playerAuctionWins,
+            playerAuctionParticipation = playerAuctionParticipation,
+        )
+        
         // Build game summary
         val gameSummary = GameSummary(
             totalRounds = snapshot.totalRounds,
@@ -464,6 +586,7 @@ class GameStatistics : GameEventListener {
             financialSummary = financialSummary,
             movementStatistics = movementStats,
             developmentStatistics = devStats,
+            auctionStatistics = auctionStats,
         )
     }
 
@@ -565,6 +688,9 @@ class GameStatistics : GameEventListener {
     data class JailReleaseEvent(val player: Player, val method: String)
     data class CardDrawnEvent(val player: Player, val deck: String, val card: Card)
     data class BankruptcyEvent(val player: Player, val creditor: Any, val round: Int, val netWorth: Int)
+    data class AuctionEvent(val deed: TitleDeed, val winner: Player?, val winningBid: Int?, val participantCount: Int, val totalRounds: Int)
+    data class AuctionBidEvent(val player: Player, val deed: TitleDeed, val bidAmount: Int, val previousBid: Int)
+    data class AuctionDropoutEvent(val player: Player, val deed: TitleDeed, val finalBid: Int)
 }
 
 /**

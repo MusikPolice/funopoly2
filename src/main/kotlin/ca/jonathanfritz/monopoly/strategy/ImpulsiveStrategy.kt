@@ -42,6 +42,7 @@ class ImpulsiveStrategy(
     override fun calculateBidIncrease(
         deed: TitleDeed,
         currentBid: Int,
+        minimumBid: Int,
         player: Player,
         bank: Bank,
         board: Board,
@@ -50,16 +51,16 @@ class ImpulsiveStrategy(
         val maxMultiplier = rng.nextDouble(0.5, 1.5)
         val maxBid = (deed.price * maxMultiplier).toInt()
 
-        // Drop out if current bid exceeds our max
-        if (currentBid >= maxBid) {
+        // Drop out if minimum bid exceeds our max
+        if (minimumBid > maxBid) {
             return null
         }
 
-        // Random increments: $5-100 per round (wildly inconsistent)
+        // Random increments: $5-100 per round (wildly inconsistent), but respect minimum
         val increment = rng.nextInt(5, 101)
-        val nextBid = minOf(currentBid + increment, maxBid)
+        val nextBid = maxOf(minimumBid, minOf(currentBid + increment, maxBid))
 
-        return if (nextBid > currentBid) nextBid else null
+        return if (nextBid >= minimumBid) nextBid else null
     }
 
     override fun valuateProperty(

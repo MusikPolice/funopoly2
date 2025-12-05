@@ -65,7 +65,7 @@ internal class ConservativeStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // BalticAvenue base value with traffic: 72, 70% = 50
-        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 51, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 51, 52, player, Bank(), board)
 
         assertNull(nextBid)
     }
@@ -76,7 +76,7 @@ internal class ConservativeStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // BalticAvenue base value with traffic: 72, 70% = 50
-        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 30, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 30, 31, player, Bank(), board)
 
         assertEquals(40, nextBid) // 30 + 10
     }
@@ -87,7 +87,7 @@ internal class ConservativeStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // BalticAvenue base value with traffic: 72, 70% = 50
-        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 45, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 45, 46, player, Bank(), board)
 
         assertEquals(50, nextBid) // maxBid, not 55
     }
@@ -97,7 +97,7 @@ internal class ConservativeStrategyTest {
         val player = Player("Big Bird", money = 540, strategy = strategy) // 500 reserve + 40 available
         val board = Board(listOf(player), Bank())
 
-        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 35, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 35, 36, player, Bank(), board)
 
         assertEquals(40, nextBid) // Can't bid more than available cash
     }
@@ -107,9 +107,22 @@ internal class ConservativeStrategyTest {
         val player = Player("Big Bird", money = 530, strategy = strategy) // 500 reserve + 30 available
         val board = Board(listOf(player), Bank())
 
-        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 31, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(BalticAvenue(), 31, 32, player, Bank(), board)
 
         assertNull(nextBid) // Can't bid above available cash
+    }
+
+    @Test
+    fun `does not buy property when cannot afford with reserve`() {
+        val player = Player("Big Bird", money = 200, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // BalticAvenue costs $60, needs 2x + reserve = 120 + 500 = 620
+        // Player only has $200
+        val shouldBuy = strategy.shouldBuyProperty(BalticAvenue(), player, bank, board)
+        
+        assertFalse(shouldBuy, "Should not buy property if cannot afford with reserve")
     }
 
     @Test

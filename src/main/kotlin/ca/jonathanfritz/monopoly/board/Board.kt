@@ -81,7 +81,7 @@ class Board(
             rng,
         ),
 
-    private val config: Config = Config(),
+    val config: Config = Config(),
 ) {
     // the board is made of tiles, starting by convention with Go
     private val tiles: List<Tile> =
@@ -147,8 +147,8 @@ class Board(
         players.filterNot { it.isBankrupt() }.forEach { player ->
             eventBus?.emit(GameEvent.TurnStarted(player, round))
 
-            val jailTurnText =
-                if (player.isInJail && player.remainingTurnsInJail > 0) {
+            if (player.isInJail) {
+                val jailTurnText = {
                     val turnNumber = 4 - player.remainingTurnsInJail
                     val ordinal =
                         when (turnNumber) {
@@ -158,13 +158,15 @@ class Board(
                             else -> throw IllegalStateException("Player cannot spend more than 3 turns in jail")
                         }
                     "$ordinal turn In"
-                } else {
-                    if (player.isInJail) "In" else "on"
                 }
-
-            println(
-                $$"\n\tStarting $${player.name}'s $$jailTurnText $${player.tileName()} with $$${player.money}",
-            )
+                println(
+                    $$"\n\tStarting $${player.name}'s $$jailTurnText jail with $$${player.money}",
+                )
+            } else {
+                println(
+                    $$"\n\tStarting $${player.name}'s turn on $${player.tileName()} with $$${player.money}",
+                )
+            }
 
             // the player can get out of jail early by using a Get Out of Jail Free card or by paying a fee
             if (player.isInJail && player.remainingTurnsInJail > 0) {

@@ -15,6 +15,7 @@ data class StatisticsReport(
     val financialSummary: FinancialSummary,
     val movementStatistics: MovementStatistics,
     val developmentStatistics: DevelopmentStatistics,
+    val auctionStatistics: AuctionStatistics,
 )
 
 data class GameSummary(
@@ -45,6 +46,8 @@ data class PlayerStatistics(
     val purchaseRate: Double,
     val jailFeePaidCount: Int,
     val jailWaitedCount: Int,
+    val propertiesWonAtAuction: Int,
+    val propertiesWonAtAuctionList: List<String>,
 )
 
 data class PropertyStatistics(
@@ -101,4 +104,25 @@ data class DevelopmentStatistics(
 data class ColorGroupInfo(
     val colorGroup: ColourGroup,
     val developmentCount: Int,
+)
+
+data class AuctionStatistics(
+    val totalAuctions: Int,
+    val successfulAuctions: Int,
+    val failedAuctions: Int,
+    val totalBids: Int,
+    val averageBidsPerAuction: Double,
+    val averageWinningBid: Double,
+    val highestWinningBid: AuctionInfo?,
+    val lowestWinningBid: AuctionInfo?,
+    val totalAuctionSpending: Int,
+    val playerAuctionWins: Map<String, Int>,
+    val playerAuctionParticipation: Map<String, Int>,
+)
+
+data class AuctionInfo(
+    val property: String,
+    val winner: String,
+    val winningBid: Int,
+    val participantCount: Int,
 )

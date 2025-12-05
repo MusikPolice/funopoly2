@@ -44,10 +44,17 @@ class ChaoticStrategy(
     override fun calculateBidIncrease(
         deed: TitleDeed,
         currentBid: Int,
+        minimumBid: Int,
         player: Player,
         bank: Bank,
         board: Board,
     ): Int? {
+        // Use valuateProperty to determine internal max bid
+        val internalMax = valuateProperty(deed, player, bank, board).strategicValue
+        if (minimumBid > internalMax) {
+            return null
+        }
+
         // Chaotic increments based on property importance
         val blocksOpponent = wouldBlockOpponentMonopoly(deed, player, board)
         val increment =
@@ -61,16 +68,10 @@ class ChaoticStrategy(
                     rng.nextInt(20, 101) // $20-$100
                 }
             }
-        val nextBid = currentBid + increment
-
-        // Use valuateProperty to determine internal max bid
-        val internalMax = valuateProperty(deed, player, bank, board).strategicValue
-        if (currentBid >= internalMax) {
-            return null
-        }
+        val nextBid = maxOf(minimumBid, currentBid + increment)
 
         // Don't exceed internal max or player's money
-        return if (nextBid <= internalMax && nextBid <= player.money) {
+        return if (nextBid <= internalMax && nextBid <= player.money && nextBid >= minimumBid) {
             nextBid
         } else {
             null

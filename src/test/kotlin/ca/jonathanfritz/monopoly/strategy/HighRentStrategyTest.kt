@@ -65,7 +65,7 @@ internal class HighRentStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // ParkPlace price 350, 120% = 420
-        val nextBid = strategy.calculateBidIncrease(ParkPlace(), 421, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(ParkPlace(), 421, 422, player, Bank(), board)
 
         assertNull(nextBid)
     }
@@ -76,7 +76,7 @@ internal class HighRentStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // ParkPlace price 350, 120% = 420
-        val nextBid = strategy.calculateBidIncrease(ParkPlace(), 300, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(ParkPlace(), 300, 301, player, Bank(), board)
 
         assertNotNull(nextBid)
         assertTrue(nextBid!! in 320..350) // Increment by 20-50
@@ -89,7 +89,7 @@ internal class HighRentStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // ParkPlace price 350, 150% = 525
-        val nextBid = strategy.calculateBidIncrease(ParkPlace(), 500, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(ParkPlace(), 500, 501, player, Bank(), board)
 
         assertNotNull(nextBid)
         assertTrue(nextBid!! in 520..525) // Increment by 20-50, capped at max
@@ -104,6 +104,22 @@ internal class HighRentStrategyTest {
 
         val baseValue = PropertyValuation.calculateBaseValue(ParkPlace(), player)
         assertEquals((baseValue.strategicValue * 1.5).toInt(), valuation.strategicValue)
+    }
+
+    @Test
+    fun `does not buy property when completing monopoly but cannot afford it`() {
+        val player = Player("Count", money = 500, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Player already owns Park Place (Dark Blue) - costs $350
+        bank.sellDeedToPlayer(ParkPlace::class, player, board)
+        
+        // Boardwalk costs $400, player only has $100 (after buying Park Place)
+        // Even though it completes monopoly, should not buy
+        val shouldBuy = strategy.shouldBuyProperty(Boardwalk(), player, bank, board)
+        
+        assertFalse(shouldBuy, "Should not buy property that completes monopoly if cannot afford it")
     }
 
     @Test

@@ -39,6 +39,7 @@ class CalculatingStrategy : PlayerStrategy {
     override fun calculateBidIncrease(
         deed: TitleDeed,
         currentBid: Int,
+        minimumBid: Int,
         player: Player,
         bank: Bank,
         board: Board,
@@ -54,15 +55,15 @@ class CalculatingStrategy : PlayerStrategy {
                 (valuation.strategicValue * 1.1).toInt()
             }
 
-        // Drop out if current bid exceeds our max
-        if (currentBid >= maxBid) {
+        // Drop out if minimum bid exceeds our max
+        if (minimumBid > maxBid) {
             return null
         }
 
-        // Efficient increments: exactly $10 per round
-        val nextBid = minOf(currentBid + 10, maxBid)
+        // Efficient increments: exactly $10 per round, but respect minimum
+        val nextBid = maxOf(minimumBid, minOf(currentBid + 10, maxBid))
 
-        return if (nextBid > currentBid) nextBid else null
+        return if (nextBid >= minimumBid) nextBid else null
     }
 
     override fun valuateProperty(

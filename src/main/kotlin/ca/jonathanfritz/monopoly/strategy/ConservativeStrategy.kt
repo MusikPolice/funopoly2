@@ -31,6 +31,7 @@ class ConservativeStrategy : PlayerStrategy {
     override fun calculateBidIncrease(
         deed: TitleDeed,
         currentBid: Int,
+        minimumBid: Int,
         player: Player,
         bank: Bank,
         board: Board,
@@ -43,13 +44,13 @@ class ConservativeStrategy : PlayerStrategy {
         // Don't bid if we can't maintain cash reserve
         val availableCash = player.money - getMinimumCashReserve(player, board)
 
-        if (currentBid >= maxBid || currentBid >= availableCash) {
+        if (minimumBid > maxBid || minimumBid > availableCash) {
             return null // Drop out
         }
 
-        // Increment by $10 or to maxBid, whichever is smaller
-        val nextBid = minOf(currentBid + 10, maxBid, availableCash)
-        return if (nextBid > currentBid) nextBid else null
+        // Increment by $10 or to maxBid, whichever is smaller, but respect minimum
+        val nextBid = maxOf(minimumBid, minOf(currentBid + 10, maxBid, availableCash))
+        return if (nextBid >= minimumBid) nextBid else null
     }
 
     override fun valuateProperty(

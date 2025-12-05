@@ -67,7 +67,7 @@ internal class CalculatingStrategyTest {
         val player = Player("Bert", money = 1500, strategy = strategy)
         val board = Board(listOf(player), Bank())
 
-        val nextBid = strategy.calculateBidIncrease(StJamesPlace(), 100, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(StJamesPlace(), 100, 101, player, Bank(), board)
 
         assertNotNull(nextBid)
         assertEquals(110, nextBid) // Exactly $10 increment
@@ -79,7 +79,7 @@ internal class CalculatingStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // StJamesPlace strategic value should be less than 300
-        val nextBid = strategy.calculateBidIncrease(StJamesPlace(), 300, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(StJamesPlace(), 300, 301, player, Bank(), board)
 
         assertNull(nextBid)
     }
@@ -92,10 +92,23 @@ internal class CalculatingStrategyTest {
         val board = Board(listOf(player), Bank())
 
         // NewYorkAvenue completes Orange monopoly
-        val nextBid = strategy.calculateBidIncrease(NewYorkAvenue(), 200, player, Bank(), board)
+        val nextBid = strategy.calculateBidIncrease(NewYorkAvenue(), 200, 201, player, Bank(), board)
 
         // Bert always bids in $10 increments
         assertEquals(210, nextBid)
+    }
+
+    @Test
+    fun `does not buy property when cannot afford with reserve`() {
+        val player = Player("Bert", money = 100, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // BalticAvenue costs $60, needs 1.5x + reserve = 90 + 100 = 190
+        // Player only has $100
+        val shouldBuy = strategy.shouldBuyProperty(BalticAvenue(), player, bank, board)
+        
+        assertFalse(shouldBuy, "Should not buy property if cannot afford with reserve")
     }
 
     @Test

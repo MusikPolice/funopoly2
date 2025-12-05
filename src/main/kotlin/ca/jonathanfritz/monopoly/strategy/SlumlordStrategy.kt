@@ -45,6 +45,7 @@ class SlumlordStrategy(
     override fun calculateBidIncrease(
         deed: TitleDeed,
         currentBid: Int,
+        minimumBid: Int,
         player: Player,
         bank: Bank,
         board: Board,
@@ -65,16 +66,16 @@ class SlumlordStrategy(
                 baseMaxBid
             }
 
-        // Drop out if current bid exceeds our max
-        if (currentBid >= maxBid) {
+        // Drop out if minimum bid exceeds our max
+        if (minimumBid > maxBid) {
             return null
         }
 
-        // Increment by $10-20 (small increments to avoid overpaying)
+        // Increment by $10-20 (small increments to avoid overpaying), but respect minimum
         val increment = rng.nextInt(10, 21)
-        val nextBid = minOf(currentBid + increment, maxBid)
+        val nextBid = maxOf(minimumBid, minOf(currentBid + increment, maxBid))
 
-        return if (nextBid > currentBid) nextBid else null
+        return if (nextBid >= minimumBid) nextBid else null
     }
 
     override fun valuateProperty(

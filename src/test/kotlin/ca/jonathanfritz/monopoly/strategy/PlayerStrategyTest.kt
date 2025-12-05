@@ -181,4 +181,16 @@ internal class PlayerStrategyTest {
         // Should return property rent, not railroad/utility rent
         assertEquals(70, highestRent)
     }
+
+    @Test
+    fun `DefaultStrategy does not buy property when cannot afford it`() {
+        val player = Player("Test", money = 50, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Boardwalk costs $400, player only has $50
+        val shouldBuy = strategy.shouldBuyProperty(Boardwalk(), player, bank, board)
+        
+        assertFalse(shouldBuy, "DefaultStrategy should not buy property if cannot afford it")
+    }
 }

@@ -51,14 +51,16 @@ interface PlayerStrategy {
      *
      * @param deed The property being auctioned
      * @param currentBid The current highest bid (or starting price if first round)
+     * @param minimumBid The minimum valid bid (currentBid + minimumIncrement)
      * @param player The player making the decision
      * @param bank Current bank state
      * @param board Current board state
-     * @return Next bid amount (must be > currentBid), or null to drop out of auction
+     * @return Next bid amount (must be >= minimumBid), or null to drop out of auction
      */
     fun calculateBidIncrease(
         deed: TitleDeed,
         currentBid: Int,
+        minimumBid: Int,
         player: Player,
         bank: Bank,
         board: Board

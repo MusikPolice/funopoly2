@@ -30,11 +30,13 @@ open class DefaultStrategy : PlayerStrategy {
     override fun calculateBidIncrease(
         deed: TitleDeed,
         currentBid: Int,
+        minimumBid: Int,
         player: Player,
         bank: Bank,
         board: Board
     ): Int? {
-        // Never participate in auctions
+        // Never participate in auctions - this keeps the baseline strategy simple and predictable
+        // for regression testing. Other strategies implement more sophisticated auction logic.
         return null
     }
 

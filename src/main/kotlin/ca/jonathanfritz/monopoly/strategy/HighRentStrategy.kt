@@ -32,8 +32,8 @@ class HighRentStrategy(
         bank: Bank,
         board: Board,
     ): Boolean {
-        // Always buy if completing monopoly
-        if (wouldCompleteMonopoly(deed, player)) {
+        // Always buy if completing monopoly AND we can afford it
+        if (wouldCompleteMonopoly(deed, player) && player.money >= deed.price) {
             return true
         }
 
@@ -45,6 +45,7 @@ class HighRentStrategy(
     override fun calculateBidIncrease(
         deed: TitleDeed,
         currentBid: Int,
+        minimumBid: Int,
         player: Player,
         bank: Bank,
         board: Board,
@@ -57,16 +58,16 @@ class HighRentStrategy(
                 (deed.price * 1.2).toInt()
             }
 
-        // Drop out if current bid exceeds our max
-        if (currentBid >= maxBid) {
+        // Drop out if minimum bid exceeds our max
+        if (minimumBid > maxBid) {
             return null
         }
 
-        // Aggressive increments: $20-50 per round (intimidate opponents)
+        // Aggressive increments: $20-50 per round (intimidate opponents), but respect minimum
         val increment = rng.nextInt(20, 51)
-        val nextBid = minOf(currentBid + increment, maxBid)
+        val nextBid = maxOf(minimumBid, minOf(currentBid + increment, maxBid))
 
-        return if (nextBid > currentBid) nextBid else null
+        return if (nextBid >= minimumBid) nextBid else null
     }
 
     override fun valuateProperty(
