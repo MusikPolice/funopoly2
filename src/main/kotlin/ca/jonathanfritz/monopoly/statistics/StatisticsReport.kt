@@ -27,6 +27,7 @@ data class GameSummary(
 
 data class PlayerStatistics(
     val playerName: String,
+    val strategyName: String,
     val totalRentPaid: Int,
     val totalRentCollected: Int,
     val propertiesPurchased: Int,
@@ -40,6 +41,10 @@ data class PlayerStatistics(
     val jailVisits: Int,
     val bankruptcyRound: Int?,
     val monopoliesAcquired: List<ColourGroup>,
+    val propertiesOffered: Int,
+    val purchaseRate: Double,
+    val jailFeePaidCount: Int,
+    val jailWaitedCount: Int,
 )
 
 data class PropertyStatistics(

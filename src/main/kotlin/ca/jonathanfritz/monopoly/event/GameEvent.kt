@@ -43,6 +43,10 @@ sealed class GameEvent {
     // Card Events
     data class CardDrawn(val player: Player, val deck: String, val card: Card) : GameEvent() // deck: "Chance" or "Community Chest"
 
+    // Strategy Decision Events
+    data class PropertyOffered(val player: Player, val deed: TitleDeed, val price: Int) : GameEvent()
+    data class PurchaseDecision(val player: Player, val deed: TitleDeed, val decision: Boolean) : GameEvent() // true = buy, false = decline
+
     // Bankruptcy Events
     data class PlayerBankrupted(val player: Player, val creditor: Any, val round: Int, val netWorth: Int) : GameEvent() // creditor: Player or Bank
     data class AssetTransferred(val from: Player, val to: Any, val asset: String, val value: Int) : GameEvent() // to: Player or Bank

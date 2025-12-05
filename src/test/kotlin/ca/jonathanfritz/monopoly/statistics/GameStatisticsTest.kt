@@ -398,4 +398,90 @@ internal class GameStatisticsTest {
         assertEquals(0, report.financialSummary.totalRentPaid)
         assertEquals(0.0, report.financialSummary.averageRentPerTransaction)
     }
+
+    @Test
+    fun `tracks properties offered to players`() {
+        val boardwalk = Property.Boardwalk()
+        val parkPlace = Property.ParkPlace()
+        val medAvenue = Property.MediterraneanAvenue()
+        
+        stats.onEvent(GameEvent.PropertyOffered(player1, boardwalk, 400))
+        stats.onEvent(GameEvent.PropertyOffered(player1, parkPlace, 350))
+        stats.onEvent(GameEvent.PropertyOffered(player2, medAvenue, 60))
+
+        val report = stats.generateReport()
+        val player1Stats = report.playerStatistics.find { it.playerName == "Player1" }
+        val player2Stats = report.playerStatistics.find { it.playerName == "Player2" }
+
+        assertNotNull(player1Stats)
+        assertEquals(2, player1Stats!!.propertiesOffered)
+        assertNotNull(player2Stats)
+        assertEquals(1, player2Stats!!.propertiesOffered)
+    }
+
+    @Test
+    fun `calculates purchase rate correctly`() {
+        val boardwalk = Property.Boardwalk()
+        val parkPlace = Property.ParkPlace()
+        val medAvenue = Property.MediterraneanAvenue()
+        
+        stats.onEvent(GameEvent.PropertyOffered(player1, boardwalk, 400))
+        stats.onEvent(GameEvent.PurchaseDecision(player1, boardwalk, true))
+        stats.onEvent(GameEvent.PropertyPurchased(player1, boardwalk, 400))
+
+        stats.onEvent(GameEvent.PropertyOffered(player1, parkPlace, 350))
+        stats.onEvent(GameEvent.PurchaseDecision(player1, parkPlace, false))
+
+        stats.onEvent(GameEvent.PropertyOffered(player1, medAvenue, 60))
+        stats.onEvent(GameEvent.PurchaseDecision(player1, medAvenue, true))
+        stats.onEvent(GameEvent.PropertyPurchased(player1, medAvenue, 60))
+
+        val report = stats.generateReport()
+        val player1Stats = report.playerStatistics.find { it.playerName == "Player1" }
+
+        assertNotNull(player1Stats)
+        assertEquals(3, player1Stats!!.propertiesOffered)
+        assertEquals(2, player1Stats.propertiesPurchased)
+        assertEquals(2.0 / 3.0, player1Stats.purchaseRate, 0.001)
+    }
+
+    @Test
+    fun `purchase rate is zero when no properties offered`() {
+        val report = stats.generateReport()
+
+        assertTrue(report.playerStatistics.isEmpty())
+    }
+
+    @Test
+    fun `purchase rate is zero when properties offered but none purchased`() {
+        val boardwalk = Property.Boardwalk()
+        val parkPlace = Property.ParkPlace()
+        
+        stats.onEvent(GameEvent.PropertyOffered(player1, boardwalk, 400))
+        stats.onEvent(GameEvent.PurchaseDecision(player1, boardwalk, false))
+
+        stats.onEvent(GameEvent.PropertyOffered(player1, parkPlace, 350))
+        stats.onEvent(GameEvent.PurchaseDecision(player1, parkPlace, false))
+
+        val report = stats.generateReport()
+        val player1Stats = report.playerStatistics.find { it.playerName == "Player1" }
+
+        assertNotNull(player1Stats)
+        assertEquals(2, player1Stats!!.propertiesOffered)
+        assertEquals(0, player1Stats.propertiesPurchased)
+        assertEquals(0.0, player1Stats.purchaseRate, 0.001)
+    }
+
+    @Test
+    fun `captures strategy name from PropertyOffered event`() {
+        val boardwalk = Property.Boardwalk()
+        
+        stats.onEvent(GameEvent.PropertyOffered(player1, boardwalk, 400))
+
+        val report = stats.generateReport()
+        val player1Stats = report.playerStatistics.find { it.playerName == "Player1" }
+
+        assertNotNull(player1Stats)
+        assertEquals("DefaultStrategy", player1Stats!!.strategyName)
+    }
 }

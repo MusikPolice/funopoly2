@@ -31,6 +31,7 @@ object StatisticsFormatter {
             report.playerStatistics.sortedByDescending { it.totalRentCollected }.forEach { player ->
                 appendLine("│")
                 appendLine("│ Player: ${player.playerName}")
+                appendLine("│   Strategy: ${player.strategyName}")
                 appendLine("│   Rent Paid: \$${player.totalRentPaid}")
                 appendLine("│   Rent Collected: \$${player.totalRentCollected}")
                 appendLine("│   Net Rent: \$${player.totalRentCollected - player.totalRentPaid}")
@@ -40,6 +41,8 @@ object StatisticsFormatter {
                 } else {
                     appendLine("│   Properties Purchased: ${player.propertiesPurchased}")
                 }
+                appendLine("│   Properties Offered: ${player.propertiesOffered}")
+                appendLine("│   Purchase Rate: ${"%.1f".format(player.purchaseRate * 100)}%")
                 if (player.propertiesAcquiredViaBankruptcy.isNotEmpty()) {
                     val bankruptcyList = player.propertiesAcquiredViaBankruptcy.joinToString(", ")
                     appendLine("│   Properties Acquired via Bankruptcy: ${player.propertiesAcquiredViaBankruptcy.size} ($bankruptcyList)")
@@ -50,6 +53,8 @@ object StatisticsFormatter {
                 appendLine("│   Passed GO: ${player.timesPassedGo} times")
                 appendLine("│   Doubles Rolled: ${player.doublesRolled}")
                 appendLine("│   Jail Visits: ${player.jailVisits}")
+                appendLine("│   Jail Fee Paid: ${player.jailFeePaidCount} times")
+                appendLine("│   Jail Waited: ${player.jailWaitedCount} times")
                 if (player.monopoliesAcquired.isNotEmpty()) {
                     val colorNames = player.monopoliesAcquired.joinToString(", ") { it.name }
                     appendLine("│   Monopolies Acquired: ${player.monopoliesAcquired.size} ($colorNames)")
@@ -158,12 +163,15 @@ object StatisticsFormatter {
             report.playerStatistics.forEachIndexed { index, player ->
                 appendLine("    {")
                 appendLine("      \"playerName\": ${formatJsonString(player.playerName)},")
+                appendLine("      \"strategyName\": ${formatJsonString(player.strategyName)},")
                 appendLine("      \"totalRentPaid\": ${player.totalRentPaid},")
                 appendLine("      \"totalRentCollected\": ${player.totalRentCollected},")
                 appendLine("      \"propertiesPurchased\": ${player.propertiesPurchased},")
                 append("      \"propertiesPurchasedList\": [")
                 append(player.propertiesPurchasedList.joinToString(", ") { "\"$it\"" })
                 appendLine("],")
+                appendLine("      \"propertiesOffered\": ${player.propertiesOffered},")
+                appendLine("      \"purchaseRate\": ${player.purchaseRate},")
                 append("      \"propertiesAcquiredViaBankruptcy\": [")
                 append(player.propertiesAcquiredViaBankruptcy.joinToString(", ") { "\"$it\"" })
                 appendLine("],")
@@ -173,6 +181,8 @@ object StatisticsFormatter {
                 appendLine("      \"timesPassedGo\": ${player.timesPassedGo},")
                 appendLine("      \"doublesRolled\": ${player.doublesRolled},")
                 appendLine("      \"jailVisits\": ${player.jailVisits},")
+                appendLine("      \"jailFeePaidCount\": ${player.jailFeePaidCount},")
+                appendLine("      \"jailWaitedCount\": ${player.jailWaitedCount},")
                 appendLine("      \"bankruptcyRound\": ${player.bankruptcyRound},")
                 append("      \"monopoliesAcquired\": [")
                 append(player.monopoliesAcquired.joinToString(", ") { "\"${it.name}\"" })

@@ -59,6 +59,9 @@ open class Player(
     // expose isBankrupt as read-only
     fun isBankrupt() = isBankrupt
 
+    // expose strategy name for statistics reporting
+    fun getStrategyName(): String = strategy.toString()
+
     fun decrementRemainingTurnsInJail(): Int {
         if (isInJail && remainingTurnsInJail > 0) {
             if (remainingTurnsInJail == 1) {
@@ -159,7 +162,12 @@ open class Player(
         deed: TitleDeed,
         bank: Bank,
         board: Board,
-    ): Boolean = strategy.shouldBuyProperty(deed, this, bank, board)
+    ): Boolean {
+        eventBus?.emit(GameEvent.PropertyOffered(this, deed, deed.price))
+        val decision = strategy.shouldBuyProperty(deed, this, bank, board)
+        eventBus?.emit(GameEvent.PurchaseDecision(this, deed, decision))
+        return decision
+    }
 
     fun shouldUnmortgageProperty(
         deed: TitleDeed,

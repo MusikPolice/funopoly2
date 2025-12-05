@@ -74,7 +74,7 @@ internal class StatisticsFormatterTest {
         val report = StatisticsReport(
             gameSummary = GameSummary(5, null, "test", 2, 0),
             playerStatistics = listOf(
-                PlayerStatistics("Player1", 100, 200, 3, emptyList(), emptyList(), 500, 2, 1, 4, 3, 2, null, emptyList())
+                PlayerStatistics("Player1", "TestStrategy", 100, 200, 3, emptyList(), emptyList(), 500, 2, 1, 4, 3, 2, null, emptyList(), 5, 0.6, 1, 1)
             ),
             propertyStatistics = PropertyStatistics(3, 1, 0, null, emptyMap()),
             financialSummary = FinancialSummary(300, 400, 200, null, 50.0),
@@ -92,6 +92,7 @@ internal class StatisticsFormatterTest {
     private fun createSampleReport(): StatisticsReport {
         val player1Stats = PlayerStatistics(
             playerName = "Player1",
+            strategyName = "DefaultStrategy",
             totalRentPaid = 100,
             totalRentCollected = 200,
             propertiesPurchased = 3,
@@ -105,10 +106,15 @@ internal class StatisticsFormatterTest {
             jailVisits = 2,
             bankruptcyRound = null,
             monopoliesAcquired = emptyList(),
+            propertiesOffered = 5,
+            purchaseRate = 0.6,
+            jailFeePaidCount = 1,
+            jailWaitedCount = 1,
         )
         
         val player2Stats = PlayerStatistics(
             playerName = "Player2",
+            strategyName = "SlumlordStrategy (Oscar)",
             totalRentPaid = 200,
             totalRentCollected = 100,
             propertiesPurchased = 2,
@@ -122,6 +128,10 @@ internal class StatisticsFormatterTest {
             jailVisits = 1,
             bankruptcyRound = 10,
             monopoliesAcquired = emptyList(),
+            propertiesOffered = 4,
+            purchaseRate = 0.5,
+            jailFeePaidCount = 0,
+            jailWaitedCount = 1,
         )
         
         return StatisticsReport(

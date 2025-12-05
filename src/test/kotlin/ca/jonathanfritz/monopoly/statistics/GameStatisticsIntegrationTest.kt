@@ -329,4 +329,56 @@ internal class GameStatisticsIntegrationTest {
         val snapshot = stats.snapshot()
         assertTrue(snapshot.gameEnded, "Game should have ended")
     }
+
+    @Test
+    fun `tracks property offers and purchase decisions during gameplay`() {
+        val eventBus = EventBus()
+        val stats = GameStatistics()
+        eventBus.register(stats)
+
+        val game = Monopoly(
+            config = Config(
+                maxRounds = 20,
+                randomSeed = 123,
+                playerConfigs = listOf(
+                    PlayerConfig("Player1", DefaultStrategy()),
+                    PlayerConfig("Player2", DefaultStrategy()),
+                ),
+            ),
+            eventBus = eventBus,
+        )
+
+        game.executeGame()
+
+        val report = stats.generateReport()
+
+        // Verify that properties were offered and purchase decisions were made
+        assertTrue(report.playerStatistics.isNotEmpty(), "Should have player statistics")
+        
+        val totalOffered = report.playerStatistics.sumOf { it.propertiesOffered }
+        val totalPurchased = report.playerStatistics.sumOf { it.propertiesPurchased }
+        
+        assertTrue(totalOffered > 0, "Properties should have been offered during gameplay")
+        assertTrue(totalPurchased > 0, "Some properties should have been purchased")
+        assertTrue(totalPurchased <= totalOffered, "Purchases cannot exceed offers")
+        
+        // Verify purchase rates are calculated
+        report.playerStatistics.forEach { playerStats ->
+            if (playerStats.propertiesOffered > 0) {
+                assertTrue(playerStats.purchaseRate >= 0.0, "Purchase rate should be non-negative")
+                assertTrue(playerStats.purchaseRate <= 1.0, "Purchase rate should not exceed 100%")
+                assertEquals(
+                    playerStats.propertiesPurchased.toDouble() / playerStats.propertiesOffered,
+                    playerStats.purchaseRate,
+                    0.001,
+                    "Purchase rate should match calculation"
+                )
+            }
+        }
+        
+        // Verify strategy names are captured
+        report.playerStatistics.forEach { playerStats ->
+            assertEquals("DefaultStrategy", playerStats.strategyName, "Strategy name should be captured")
+        }
+    }
 }

@@ -56,6 +56,10 @@ class GameStatistics : GameEventListener {
     
     // Bankruptcy Statistics
     private val bankruptcies = mutableListOf<BankruptcyEvent>()
+    
+    // Decision Metrics (Strategy-related)
+    private val propertiesOfferedToPlayers = mutableMapOf<Player, Int>() // Times landed on unowned property
+    private val playerStrategies = mutableMapOf<Player, String>() // Player -> strategy name
 
     override fun onEvent(event: GameEvent) {
         when (event) {
@@ -79,6 +83,8 @@ class GameStatistics : GameEventListener {
             is GameEvent.PlayerSentToJail -> handlePlayerSentToJail(event)
             is GameEvent.PlayerLeftJail -> handlePlayerLeftJail(event)
             is GameEvent.CardDrawn -> handleCardDrawn(event)
+            is GameEvent.PropertyOffered -> handlePropertyOffered(event)
+            is GameEvent.PurchaseDecision -> handlePurchaseDecision(event)
             is GameEvent.PlayerBankrupted -> handlePlayerBankrupted(event)
             is GameEvent.AssetTransferred -> handleAssetTransferred(event)
             is GameEvent.GameEnded -> handleGameEnded(event)
@@ -125,6 +131,21 @@ class GameStatistics : GameEventListener {
             else -> tile::class.simpleName ?: "Unknown"
         }
         tileLandings[tileName] = (tileLandings[tileName] ?: 0) + 1
+    }
+    
+    private fun handlePropertyOffered(event: GameEvent.PropertyOffered) {
+        propertiesOfferedToPlayers[event.player] = (propertiesOfferedToPlayers[event.player] ?: 0) + 1
+        
+        // Capture strategy name on first encounter - this is the right place since PropertyOffered
+        // is emitted when a player makes a strategic decision
+        if (!playerStrategies.containsKey(event.player)) {
+            playerStrategies[event.player] = event.player.getStrategyName()
+        }
+    }
+    
+    private fun handlePurchaseDecision(event: GameEvent.PurchaseDecision) {
+        // This event is emitted after PropertyOffered, so we can use it for future metrics
+        // For now, PropertyPurchased event already tracks successful purchases
     }
 
     private fun handleBankPaidPlayer(event: GameEvent.BankPaidPlayer) {
@@ -268,7 +289,8 @@ class GameStatistics : GameEventListener {
                          goPassings.keys +
                          doublesRolled.keys +
                          jailSentEvents.map { it.player } +
-                         bankruptcies.map { it.player }).distinct()
+                         bankruptcies.map { it.player } +
+                         propertiesOfferedToPlayers.keys).distinct()
         
         // Calculate final property ownership by tracking purchases and bankruptcy transfers
         val propertyOwnership = mutableMapOf<TitleDeed, Player>()
@@ -324,11 +346,23 @@ class GameStatistics : GameEventListener {
                 ?.map { it::class.simpleName ?: "Unknown" }
                 ?: emptyList()
             
+            val propertiesOffered = propertiesOfferedToPlayers[player] ?: 0
+            val propertiesPurchasedCount = propertyPurchases.count { it.player == player }
+            val purchaseRate = if (propertiesOffered > 0) {
+                propertiesPurchasedCount.toDouble() / propertiesOffered
+            } else {
+                0.0
+            }
+            
+            val jailFeePaid = jailReleaseEvents.count { it.player == player && it.method == "paid fee" }
+            val jailWaited = jailReleaseEvents.count { it.player == player && it.method == "rolled doubles" }
+            
             PlayerStatistics(
                 playerName = player.name,
+                strategyName = playerStrategies[player] ?: "Unknown",
                 totalRentPaid = rentPayments.filter { it.payer == player }.sumOf { it.amount },
                 totalRentCollected = rentPayments.filter { it.recipient == player }.sumOf { it.amount },
-                propertiesPurchased = propertyPurchases.count { it.player == player },
+                propertiesPurchased = propertiesPurchasedCount,
                 propertiesPurchasedList = purchasedList,
                 propertiesAcquiredViaBankruptcy = bankruptcyList,
                 totalPropertySpending = propertyPurchases.filter { it.player == player }.sumOf { it.price },
@@ -339,6 +373,10 @@ class GameStatistics : GameEventListener {
                 jailVisits = jailSentEvents.count { it.player == player },
                 bankruptcyRound = bankruptcies.find { it.player == player }?.round,
                 monopoliesAcquired = monopolies,
+                propertiesOffered = propertiesOffered,
+                purchaseRate = purchaseRate,
+                jailFeePaidCount = jailFeePaid,
+                jailWaitedCount = jailWaited,
             )
         }
         
