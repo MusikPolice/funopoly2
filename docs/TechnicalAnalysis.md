@@ -1,11 +1,10 @@
 # Funopoly2 System Technical Analysis
 
 **Version:** 1.0-SNAPSHOT  
-**Last Reviewed:** December 3, 2025  
+**Last Reviewed:** December 5, 2025  
 **Primary Language:** Kotlin 2.2.x  
 **Target JVM:** 17
 
-**Supersedes:** `docs/TechnicalAnalysis.md`, `docs/EventSystemGuide.md`
 
 ---
 
@@ -27,12 +26,16 @@ Implemented and present in code:
   - Turn/round execution via `Board.executeRound`.
   - End conditions: all but one player bankrupt, or `maxRounds` reached.
 - **Domain model:** players, board, tiles, dice, bank, deeds (properties, railroads, utilities), Chance & Community Chest cards, exceptions.
+- **Player strategy system:**
+  - `PlayerStrategy` interface with 8 implemented strategies (Default, Slumlord, Conservative, HighRent, Gambler, Calculating, Chaotic, Impulsive).
+  - All player decision-making (buying, bidding, development, liquidation) delegated to pluggable strategies.
+  - Deterministic testing support via seeded RNG for random strategies.
 - **Bankruptcy and unmortgaging:**
   - Bankruptcy to bank and player-to-player bankruptcy with mortgage fee handling and cascading bankruptcy.
-  - Property unmortgaging at 110% of mortgage value; strategy-based decision (`Player.shouldUnmortgageProperty`).
+  - Property unmortgaging at 110% of mortgage value; strategy-based decision via `PlayerStrategy.shouldUnmortgageProperty`.
 - **Property development and liquidation:**
   - Even-building rules enforced in `TitleDeed` helpers and `Bank` operations.
-  - Greedy development and structured liquidation strategy in `Player`.
+  - Development and liquidation decisions delegated to `PlayerStrategy`.
 - **Event system:**
   - `EventBus`, `GameEvent` (22 event types), `GameEventListener`.
   - Integrated emissions from `Monopoly`, `Board`, `Bank`, `Tile`, and bankruptcy logic in `Player`.
@@ -44,13 +47,13 @@ Implemented and present in code:
 
 Not implemented or explicitly TODO in code:
 
-- Property auctions after declined purchases and on bankruptcy returns.
-- Player trading / negotiation.
-- Rich **player strategy abstraction** (current logic is hard-coded methods on `Player`).
+- Property auctions after declined purchases and on bankruptcy returns (TODO in `Monopoly.kt`, `Tile.kt`, `Bank.kt`).
+- Player trading / negotiation (TODO in `Board.kt`).
 - House rules (Free Parking pot, double GO salary, variable starting cash, etc.).
 - Monte Carlo batch runner and cross-game aggregation of stats.
 - Structured logging (stdout `println` is used throughout).
 - Updating rule implementation to a 2023 ruleset (TODO in `Monopoly.kt`).
+- Building auctions when multiple players want to build simultaneously (TODO in `Bank.kt`).
 
 ---
 
@@ -65,8 +68,8 @@ High-level structure (from `src/main/kotlin`):
 ```text
 ca.jonathanfritz.monopoly/
 ├── Monopoly.kt              # Main game orchestrator & entry point
-├── Config.kt                # Game configuration (rounds, statistics)
-├── Player.kt                # Player state, strategy, liquidation & bankruptcy
+├── Config.kt                # Game configuration (rounds, statistics, players)
+├── Player.kt                # Player state, delegates decisions to strategy
 ├── board/
 │   ├── Board.kt             # Board layout, round/turn execution, movement
 │   ├── Bank.kt              # Money, deeds, houses/hotels, mortgages
@@ -83,6 +86,17 @@ ca.jonathanfritz.monopoly/
 │   ├── Railroad.kt          # 4 railroads
 │   ├── Utility.kt           # 2 utilities
 │   └── ColourGroup.kt       # Property colour groups
+├── strategy/
+│   ├── PlayerStrategy.kt    # Strategy interface with helper methods
+│   ├── PropertyValuation.kt # Property valuation data class
+│   ├── DefaultStrategy.kt   # Balanced baseline strategy
+│   ├── SlumlordStrategy.kt  # Cheap property focus (Oscar)
+│   ├── ConservativeStrategy.kt # High cash reserves (Count)
+│   ├── HighRentStrategy.kt  # Expensive property focus (Big Bird)
+│   ├── GamblerStrategy.kt   # Railroad collector (Cookie Monster)
+│   ├── CalculatingStrategy.kt # ROI optimizer (Bert)
+│   ├── ChaoticStrategy.kt   # Opponent blocker (Ernie)
+│   └── ImpulsiveStrategy.kt # Random decisions (Elmo)
 ├── event/
 │   ├── GameEvent.kt         # Sealed class with 22 event types
 │   ├── EventBus.kt          # Event distribution to listeners
@@ -110,8 +124,11 @@ ca.jonathanfritz.monopoly/
   - `GameEvent` for event types.
 - **Enum-like sealed registries**
   - Companion utilities (e.g., `TitleDeed.values`) use reflection to list all instances once at startup.
-- **Strategy via overridable methods on `Player`**
-  - `isBuying`, `isPayingGetOutOfJailEarlyFee`, `developProperties`, `liquidateAssets`, `shouldUnmortgageProperty` are `open` and intended as extension points, but not factored into a dedicated strategy interface yet.
+- **Strategy pattern for player decision-making**
+  - `PlayerStrategy` interface defines all decision methods (buying, bidding, development, liquidation, etc.).
+  - `Player` delegates all strategic decisions to an injected `PlayerStrategy` instance.
+  - 8 concrete strategies implemented with distinct behaviors (see Section 3.9).
+  - Strategies are stateless and reusable across players and games.
 - **Observer pattern for events and statistics**
   - `EventBus` with pluggable `GameEventListener`s (e.g., `GameStatistics`).
 - **Exception-driven rule enforcement**
@@ -128,6 +145,7 @@ ca.jonathanfritz.monopoly/
 Responsibilities:
 
 - **Game setup** in `init`:
+  - Creates players from `Config.playerConfigs` via `createPlayers()` companion method.
   - Uses `Bank.pay(1500, player, "in starting salary")` to grant starting cash.
   - Initializes all players to `position = 0` (Go).
 - **Game loop** (`executeGame`):
@@ -137,19 +155,28 @@ Responsibilities:
 - **Statistics integration:**
   - If `Config.collectStatistics` is true, constructs an `EventBus`, registers `GameStatistics`, and wires `Bank` and `Board` to that bus.
   - On game end, calls `outputStatistics()` which uses `StatisticsFormatter` to print console or JSON according to `config.statisticsOutputFormat`.
+- **RNG management:**
+  - Uses `config.randomSeed` to create a seeded `Random` instance for deterministic gameplay, or `Random.Default` if no seed provided.
 
 ### 3.2 Config
 
 **File:** `Config.kt`
 
-From code (not reproduced here), `Config` includes at least:
+Data class containing all configurable game parameters:
 
-- `maxRounds: Int` – maximum round count before forced end.
-- `collectStatistics: Boolean` – enables the event bus and `GameStatistics`.
-- `statisticsOutputFormat: StatisticsOutputFormat` – `CONSOLE` or `JSON`.
-- `getOutOfJailEarlyFeeAmount: Int` – fee used in Board jail logic.
+- `getOutOfJailEarlyFeeAmount: Int = 50` – fee to leave jail early.
+- `maxRounds: Int = 100` – maximum round count before forced end.
+- `collectStatistics: Boolean = true` – enables the event bus and `GameStatistics`.
+- `statisticsOutputFormat: StatisticsOutputFormat = CONSOLE` – `CONSOLE` or `JSON`.
+- `playerConfigs: List<PlayerConfig> = emptyList()` – list of player configurations.
+- `randomSeed: Long? = null` – optional seed for deterministic RNG.
 
-Config is **underutilized** relative to the number of hardcoded constants in the game logic.
+`PlayerConfig` data class:
+
+- `name: String` – player display name.
+- `strategy: PlayerStrategy` – the strategy this player will use.
+
+Note: Config is still **underutilized** relative to the number of hardcoded constants in the game logic (starting cash, GO salary, tax amounts, building limits, etc.).
 
 ### 3.3 Player
 
@@ -162,6 +189,7 @@ State (selected fields):
 - `isBankrupt: Boolean` (private backing, `isBankrupt()` accessor).
 - Jail state: `isInJail: Boolean` (setter manages `remainingTurnsInJail`), `remainingTurnsInJail: Int`.
 - Inventory: `getOutOfJailFreeCards: MutableList<Card.GetOutOfJailFreeCard>`.
+- `strategy: PlayerStrategy = DefaultStrategy()` – injected strategy for all decision-making.
 - Optional `eventBus: EventBus?` used only for bankruptcy events.
 
 Important methods (behavior verified in code):
@@ -173,16 +201,16 @@ Important methods (behavior verified in code):
   - `netWorth()` = cash + sum of deed prices + building cost of all current developments.
   - `incomeTaxAmount()` = `ceil(min(200, 10% of net worth))`.
 - **Jail:**
-  - `isPayingGetOutOfJailEarlyFee(amount)` – pays if in jail, no GOOJF card, still has remaining turns, and `money > amount`.
+  - `isPayingGetOutOfJailEarlyFee(amount, board)` – delegates to `strategy.shouldPayJailFee()`.
   - `useGetOutOfJailFreeCard()` – consumes a card if in jail.
 - **Development:**
-  - `developProperties(bank, board)` – greedy development strategy (Section 4.1).
-  - `unmortgageProperties(bank, board)` – unmortgage based on `shouldUnmortgageProperty`.
-- **Strategy hooks:**
-  - `isBuying(deed)` – current rule: buy if `money > deed.price`.
-  - `shouldUnmortgageProperty(deed, mortgageValue)` – default true when `money >= 2.2 * mortgageValue`.
+  - `developProperties(bank, board)` – delegates property selection to `strategy.selectPropertyToDevelop()` (Section 4.1).
+  - `unmortgageProperties(bank, board)` – delegates to `strategy.shouldUnmortgageProperty()`.
+- **Strategy delegation:**
+  - `isBuying(deed, bank, board)` – delegates to `strategy.shouldBuyProperty()`.
+  - All strategic decisions routed through the injected `PlayerStrategy` instance.
 - **Liquidation & bankruptcy:**
-  - `liquidateAssets(requiredAmount, bank, board)` – 3-phase mortgage/sell strategy (Section 4.2).
+  - `liquidateAssets(requiredAmount, bank, board)` – 3-phase mortgage/sell algorithm using strategy prioritization methods (Section 4.2).
   - `declareBankruptcy(bank, board)` – bankruptcy to bank (requires full liquidation; transfers deeds back to bank and emits `GameEvent.PlayerBankrupted` with creditor=`Bank`).
   - `private declareBankruptcy(creditor: Player, bank, board)` – full player-to-player bankruptcy; cash, GOOJF cards, all mortgaged deeds transferred; handles mortgage assumption/unmortgaging and cascading bankruptcy; emits `GameEvent.PlayerBankrupted` with creditor=`Player` or `Bank` depending on outcome.
 
@@ -290,54 +318,113 @@ Key operations:
   - Tracks `previous: Roll` where `Roll` holds `die1`, `die2`, `amount`, `isDoubles`, `highest`.
   - Used by utilities for rent.
 
+### 3.9 Player Strategy System
+
+**Files:** `strategy/PlayerStrategy.kt` and 8 concrete strategy implementations
+
+The strategy system decouples player decision-making from player state management via the `PlayerStrategy` interface.
+
+**Interface Design:**
+
+`PlayerStrategy` defines 9 core decision methods:
+
+1. `shouldBuyProperty(deed, player, bank, board)` – purchase decision when landing on unowned property.
+2. `calculateBidIncrease(deed, currentBid, player, bank, board)` – auction bidding (returns next bid or null to drop out).
+3. `valuateProperty(deed, player, bank, board)` – returns `PropertyValuation` with strategic value and reasoning.
+4. `getMinimumCashReserve(player, board)` – minimum cash to maintain.
+5. `shouldPayJailFee(feeAmount, player, board)` – early jail release decision.
+6. `selectPropertyToDevelop(developableProperties, player, bank, board)` – chooses which property to build on.
+7. `shouldUnmortgageProperty(deed, unmortgageCost, player, board)` – unmortgage decision.
+8. `prioritizeMortgages(mortgageableProperties, player, board)` – orders properties for liquidation.
+9. `prioritizeBuildingSales(developedProperties, player, board)` – orders buildings for liquidation.
+
+Plus 2 helper methods: `wouldCompleteMonopoly()` and `calculateHighestRentOnBoard()`.
+
+**Key Characteristics:**
+
+- **Stateless:** strategies make decisions purely from method parameters; no mutable state.
+- **Reusable:** same strategy instance can be shared across players and games.
+- **Testable:** deterministic strategies enable reproducible testing; random strategies accept seeded RNG.
+- **Full game state access:** all methods receive `player`, `bank`, and `board`, enabling sophisticated opponent-aware decisions.
+
+**Implemented Strategies:**
+
+1. **DefaultStrategy** – Balanced baseline: buys when affordable, $200 reserve, even development.
+2. **SlumlordStrategy** (Oscar) – Cheap property focus (Brown/Light Blue), builds to 4 houses max, $200 reserve.
+3. **ConservativeStrategy** (Count) – High cash reserves ($500), cautious buying (>$700 cash), prioritizes expensive properties.
+4. **HighRentStrategy** (Big Bird) – Expensive property focus (Red/Yellow/Green/Dark Blue), $300 reserve, aggressive development.
+5. **GamblerStrategy** (Cookie Monster) – Railroad collector, minimal reserve ($100), aggressive bidding (up to 200% on railroads).
+6. **CalculatingStrategy** (Bert) – ROI-based decisions (15% buy threshold, 20% development threshold), dynamic reserves (2× highest opponent rent, min $300), prioritizes Orange/Red.
+7. **ChaoticStrategy** (Ernie) – Opponent blocker, random reserves ($0-$500), chaotic bidding, prioritizes hotels for intimidation. Requires seeded RNG.
+8. **ImpulsiveStrategy** (Elmo) – Random decisions (90% buy rate), minimal reserve ($50), inconsistent valuations. Requires seeded RNG.
+
+See `docs/PlayerPersonasGuide.md` for detailed strategy documentation and usage examples.
+
+**Integration:**
+
+- `Player` constructor accepts `strategy: PlayerStrategy = DefaultStrategy()`.
+- `Player.isBuying()`, `Player.developProperties()`, `Player.unmortgageProperties()`, and `Player.liquidateAssets()` all delegate to strategy methods.
+- `Config.playerConfigs` specifies name and strategy for each player.
+
 ---
 
 ## 4. Key Algorithms & Business Logic
 
-### 4.1 Property Development Strategy (`Player.developProperties`)
+### 4.1 Property Development (`Player.developProperties`)
 
-Summary from implementation:
+The development algorithm in `Player.developProperties()` delegates property selection to the injected `PlayerStrategy`:
 
-- Filters owned deeds to developable properties: not already with hotel, type `Property`.
-- Derives owned colour groups and filters to those where `hasMonopoly` is true.
-- Within each monopoly group, filters to properties where `buildingCost < money` (no liquidation to develop).
-- Sorts candidate properties **descending by current rent** (`calculateRent`) as a heuristic for ROI.
-- Finds the first candidate that passes even-building rules:
-  - If current `numHouses == 4`, uses `addingOrRemovingHotelRespectsEvenBuildingRules`.
-  - Else uses `addingHouseRespectsEvenBuildingRules`.
-- If a candidate is found, builds **exactly one** building:
-  - `numHouses == 4` → `Bank.sellHotelToPlayer`.
-  - Otherwise → `Bank.sellHouseToPlayer`.
+**Algorithm:**
 
-Characteristics and caveats:
+1. Filters owned deeds to developable properties: not already with hotel, type `Property`.
+2. Derives owned colour groups and filters to those where `hasMonopoly` is true.
+3. Within each monopoly group, filters to properties where:
+   - `buildingCost <= money - strategy.getMinimumCashReserve(this, board)` (respects strategy's cash reserve).
+   - Even-building rules allow the addition (checked via `TitleDeed` helpers).
+4. **Delegates to strategy:** calls `strategy.selectPropertyToDevelop(candidateProperties, this, bank, board)`.
+5. If strategy returns a property, builds **exactly one** building:
+   - `numHouses == 4` → `Bank.sellHotelToPlayer`.
+   - Otherwise → `Bank.sellHouseToPlayer`.
 
-- **Greedy**: always favors the property with highest current rent; no lookahead.
-- **Aggressive cash usage**: only requires `buildingCost < money`; no explicit reserve for future rent obligations.
+**Strategy-Specific Behavior:**
+
+- **DefaultStrategy:** sorts by descending current rent (greedy heuristic).
+- **CalculatingStrategy:** calculates ROI for each property, requires 20% threshold, prioritizes 3-house sweet spot.
+- **SlumlordStrategy:** only develops cheap properties (Brown/Light Blue), stops at 4 houses.
+- **ChaoticStrategy:** prioritizes hotels for intimidation factor.
+- **ImpulsiveStrategy:** selects randomly from candidates.
+
+**Characteristics:**
+
 - **Single-building per call**: per dice roll/turn, at most one house or hotel.
-- No configuration or pluggable strategy object; overridden only by subclassing `Player`.
+- **Strategy-controlled reserves**: each strategy defines its own minimum cash buffer.
+- **Pluggable logic**: different strategies implement vastly different development priorities.
 
-### 4.2 Asset Liquidation Strategy (`Player.liquidateAssets`)
+### 4.2 Asset Liquidation (`Player.liquidateAssets`)
 
-`liquidateAssets(requiredAmount, bank, board)` is a 3-phase looped algorithm:
+`liquidateAssets(requiredAmount, bank, board)` is a 3-phase looped algorithm that delegates prioritization to the injected `PlayerStrategy`:
+
+**Algorithm:**
 
 1. **Phase 1 – Mortgage non-monopoly properties**
    - Filter deeds not in a monopoly.
    - Within those, select eligible deeds via `selectDeedsToMortgage`:
      - Exclude already mortgaged.
      - Exclude developed properties (houses/hotel present).
-     - Sort descending by "distance from monopoly" (favor properties farthest from completing a set), then ascending by `mortgageValue`.
+   - **Delegates to strategy:** calls `strategy.prioritizeMortgages(eligibleDeeds, this, board)` to order properties.
    - Mortgage each in order using `Bank.mortgageDeed` until `money >= requiredAmount` or no more candidates.
 
 2. **Phase 2 – Sell buildings**
    - Filter deeds that are `Property` and have houses or hotel.
-   - Sort by **ascending rent** (sell least valuable income sources first).
+   - **Delegates to strategy:** calls `strategy.prioritizeBuildingSales(developedProperties, this, board)` to order properties.
    - For each, check even-building legality:
      - If hotel: `addingOrRemovingHotelRespectsEvenBuildingRules`.
      - Else: `removingHouseRespectsEvenBuildingRules`.
    - Sell using `Bank.buyHotelFromPlayer` (hotels) or `Bank.buyHouseFromPlayer` (houses) until `money >= requiredAmount` or stock exhausted.
 
 3. **Phase 3 – Mortgage monopolies**
-   - Now consider deeds in colour groups where the player still has a monopoly, again using `selectDeedsToMortgage`.
+   - Now consider deeds in colour groups where the player still has a monopoly.
+   - Again delegates to `strategy.prioritizeMortgages()` for ordering.
    - Mortgage until funds are sufficient or no more deeds.
 
 4. **Looping and termination**
@@ -345,7 +432,14 @@ Characteristics and caveats:
    - `hasFullyLiquidatedAssets()` returns true if there are no deeds, or all remaining are mortgaged and undeveloped.
    - If still short of `requiredAmount` after full liquidation, prints a message and throws `BankruptcyException`.
 
-This code is non-trivial (~60 lines) and commented as a candidate for refactoring into a separate strategy/utility.
+**Strategy-Specific Behavior:**
+
+- **DefaultStrategy:** mortgages by distance from monopoly (favor incomplete sets), then by mortgage value; sells buildings by ascending rent.
+- **CalculatingStrategy:** prioritizes by ROI calculations.
+- **SlumlordStrategy:** protects cheap properties, sacrifices expensive ones first.
+- **ChaoticStrategy:** random prioritization.
+
+This algorithm ensures strategies control which assets are sacrificed first during financial distress.
 
 ### 4.3 Even Building Rules
 
@@ -497,26 +591,32 @@ Typical commands (from `build.gradle.kts`):
 - `./gradlew run` – run the main entry point (single game with fixed RNG seed).
 - `./gradlew build` – full build.
 
-### 6.2 Test Coverage (Qualitative)
+### 6.2 Test Coverage
 
-From the test package names and file list (no exact counts asserted here):
+**Test Count:** 411 tests across 38 test files (verified via `@Test` annotation count).
+
+**Test Organization:**
 
 - **Core engine tests:**
-  - `MonopolyTest`, `PlayerTest`, `BoardTest`, `DiceTest`, `TileTest`, plus deed and card tests.
+  - `MonopolyTest`, `PlayerTest` (39 tests), `BoardTest` (24 tests), `DiceTest`, `TileTest` (8 tests).
 - **Bank and deed tests:**
-  - `BankTest`, `PropertyTest`, `RailroadTest`, `UtilityTest`, `TitleDeedTest`, `ColourGroupTest`.
+  - `BankTest` (29 tests), `PropertyTest` (12 tests), `RailroadTest` (9 tests), `UtilityTest` (7 tests), `TitleDeedTest` (5 tests), `ColourGroupTest` (10 tests).
 - **Card tests:**
-  - `CardTest`, `ChanceCardTest`, `CommunityChestCardTest`, `DeckTest`, helper `CardTestUtils`.
+  - `CardTest` (2 tests), `ChanceCardTest` (14 tests), `CommunityChestCardTest` (15 tests), `DeckTest` (3 tests), helper `CardTestUtils`.
+- **Strategy tests:**
+  - `PlayerStrategyTest` (12 tests), `PropertyValuationTest` (19 tests).
+  - `DefaultStrategy`, `SlumlordStrategyTest` (20 tests), `ConservativeStrategyTest` (28 tests), `HighRentStrategyTest` (18 tests), `GamblerStrategyTest` (20 tests), `CalculatingStrategyTest` (18 tests), `ChaoticStrategyTest` (17 tests), `ImpulsiveStrategyTest` (15 tests).
 - **Event and statistics tests:**
-  - `event/EventBusTest`, `event/EventEmissionIntegrationTest`.
-  - `statistics/GameStatisticsTest`, `statistics/GameStatisticsIntegrationTest`, `MonopolyStatisticsIntegrationTest`.
+  - `event/EventBusTest` (8 tests), `event/EventEmissionIntegrationTest` (12 tests).
+  - `statistics/GameStatisticsTest` (27 tests), `statistics/GameStatisticsIntegrationTest` (9 tests), `statistics/StatisticsFormatterTest` (4 tests), `MonopolyStatisticsIntegrationTest` (3 tests).
 
-The suite appears to cover:
+**Coverage Areas:**
 
 - Correctness of card and tile behavior.
 - Movement rules, dice behavior, and jail edge cases.
 - Development and even-building constraints.
-- Bankruptcy and liquidation paths, including exceptions.
+- Bankruptcy and liquidation paths, including exceptions and cascading bankruptcy.
+- Strategy decision-making for all 8 implemented strategies.
 - Event emission for major flows.
 - End-to-end statistics collection and output formatting.
 
@@ -533,34 +633,25 @@ This section lists issues that are clearly visible in code or TODO comments, not
 - **House rules** are not supported; many potential variants are hard-coded to standard rules.
 - **Bank money limit** is modeled with a finite `money` field, despite rules stating the bank never runs out; whether this matters in practice is unclear without stress tests.
 
-### 7.2 Strategy Abstraction ✅ **IMPLEMENTED**
-
-- ✅ `PlayerStrategy` interface successfully decouples decision-making from player state
-- ✅ 8 distinct strategies implemented (Default, Slumlord, Conservative, HighRent, Gambler, Calculating, Chaotic, Impulsive)
-- ✅ Strategies are easily swappable via Player constructor
-- ✅ Random strategies (Chaotic, Impulsive) accept seeded RNG for deterministic testing
-- ✅ Comprehensive test coverage (100+ strategy tests)
-- See `PlayerPersonasGuide.md` for usage documentation
-
-### 7.3 Configuration Underuse
+### 7.2 Configuration Underuse
 
 - Many important game parameters remain hard-coded:
   - Starting cash ($1500), GO salary ($200), tax amounts, building limits, rent multipliers.
 - `Config` currently only exposes a small subset (max rounds, statistics toggles, jail fee).
 
-### 7.4 Observability & Logging
+### 7.3 Observability & Logging
 
 - Event system is present and well-integrated, but **general logging** still uses `println` on stdout.
 - No structured log levels or pluggable logger.
 - Tests may rely on console output for verification, which can make failures noisy.
 
-### 7.5 Algorithm Complexity
+### 7.4 Algorithm Complexity
 
-- `Player.liquidateAssets` and `Player.developProperties` are complex, with nested functional transformations and multiple passes:
-  - Harder to reason about or reuse for alternative strategies.
+- `Player.liquidateAssets` and `Player.developProperties` contain complex nested functional transformations and multiple passes.
+  - While strategies now control prioritization, the core algorithms could benefit from refactoring for clarity.
   - TODO comments acknowledge the need for tidying.
 
-### 7.6 Concurrency & Scalability
+### 7.5 Concurrency & Scalability
 
 - Entire system is intentionally **single-threaded**.
 - `EventBus` and stateful classes (`Player`, `Bank`, `Board`, `Deck`, etc.) are **not thread-safe**.
@@ -572,54 +663,26 @@ This section lists issues that are clearly visible in code or TODO comments, not
 
 These are natural extensions consistent with existing TODOs and architecture; they do *not* claim to be implemented.
 
-### 8.1 Strategy System ✅ **COMPLETE**
-
-The strategy system has been fully implemented with 8 distinct player strategies:
-
-**Architecture**:
-- `PlayerStrategy` interface defines all decision-making methods
-- `Player` delegates all strategic decisions to injected strategy
-- Strategies are stateless and reusable across players
-- Default methods in interface provide shared helper logic
-
-**Implemented Strategies**:
-1. **DefaultStrategy**: Balanced baseline behavior
-2. **SlumlordStrategy** (Oscar): Cheap property focus, builds to 4 houses
-3. **ConservativeStrategy** (Count): High cash reserves, cautious play
-4. **HighRentStrategy** (Big Bird): Expensive property focus, aggressive development
-5. **GamblerStrategy** (Cookie Monster): Railroad collector, minimal reserves
-6. **CalculatingStrategy** (Bert): ROI-based optimization, dynamic reserves
-7. **ChaoticStrategy** (Ernie): Opponent blocking, unpredictable behavior
-8. **ImpulsiveStrategy** (Elmo): Random decisions, minimal planning
-
-**Key Features**:
-- Seeded RNG support for deterministic testing (Chaotic, Impulsive)
-- Comprehensive test coverage (100+ tests across all strategies)
-- toString() methods for debugging and logging
-- Shared helper methods (wouldCompleteMonopoly, calculateHighestRentOnBoard)
-
-**Documentation**: See `PlayerPersonasGuide.md` for detailed usage guide
-
-### 8.2 Auctions & Trading
+### 8.1 Auctions & Trading
 
 - Implement property auctions for:
   - Declined purchases on landing.
   - Deeds returned to bank on bankruptcy.
 - Add trading API on `Board`/`Monopoly` to allow inter-player negotiation.
 
-### 8.3 House Rules & Simulation Parameters
+### 8.2 House Rules & Simulation Parameters
 
 - Extend `Config` with house-rule toggles and numeric parameters:
   - Free Parking pot behavior, double GO salary, alternative starting cash, alternative bank stock, variable tax rules.
 - Parameterize building supplies, bank money behavior, and card decks for scenario testing.
 
-### 8.4 Monte Carlo Runner & Aggregated Stats
+### 8.3 Monte Carlo Runner & Aggregated Stats
 
 - Build a `Simulator` component that:
   - Runs many independent games, each with its own `Monopoly`, `Board`, `Bank`, `EventBus`, `GameStatistics`.
   - Aggregates `StatisticsReport`s into higher-level distributions (win rate per strategy, average rounds, tile landing distributions, etc.).
 
-### 8.5 Logging & Tooling
+### 8.4 Logging & Tooling
 
 - Replace core `println` calls with a simple logging abstraction.
 - Optionally integrate with the event system to emit structured logs for critical state changes.
@@ -628,6 +691,7 @@ The strategy system has been fully implemented with 8 distinct player strategies
 
 ## 9. Maintenance Notes
 
-- **Single source of truth for architecture:** this document should be treated as canonical over the older `TechnicalAnalysis.md` and `EventSystemGuide.md`. When code changes, update this file first.
+- **Single source of truth for architecture:** this document is the canonical reference for the codebase architecture. When code changes, update this file to reflect the new state.
 - **Tests as specification:** for tricky rules (edge cases with doubles, jail interactions, bankruptcy cascades), prefer reading the relevant tests alongside this document to understand intended behavior.
 - **Statistics evolution:** the current event and statistics design is flexible enough to support additional listeners (e.g., replay recorder, visualization) without touching core game logic; any new observability feature should try to build on `EventBus` rather than adding more ad-hoc logging.
+- **Strategy system:** all player decision-making is delegated to `PlayerStrategy` implementations. To add new behaviors, implement a new strategy rather than modifying `Player` directly. See `docs/PlayerPersonasGuide.md` for guidance.
