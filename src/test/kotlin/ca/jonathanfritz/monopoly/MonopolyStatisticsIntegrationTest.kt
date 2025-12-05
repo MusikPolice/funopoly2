@@ -1,6 +1,7 @@
 package ca.jonathanfritz.monopoly
 
 import ca.jonathanfritz.monopoly.statistics.StatisticsOutputFormat
+import ca.jonathanfritz.monopoly.strategy.DefaultStrategy
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
 
@@ -13,15 +14,15 @@ internal class MonopolyStatisticsIntegrationTest {
     @Test
     fun `game with statistics collection enabled completes successfully`() {
         val game = Monopoly(
-            players = listOf(
-                Player("Alice"),
-                Player("Bob"),
-            ),
-            rng = Random(123), // Seeded for reproducibility
             config = Config(
                 maxRounds = 20, // Short game for testing
                 collectStatistics = true,
                 statisticsOutputFormat = StatisticsOutputFormat.CONSOLE,
+                randomSeed = 123, // Seeded for reproducibility
+                playerConfigs = listOf(
+                    PlayerConfig("Alice", DefaultStrategy()),
+                    PlayerConfig("Bob", DefaultStrategy()),
+                ),
             ),
         )
         
@@ -32,15 +33,15 @@ internal class MonopolyStatisticsIntegrationTest {
     @Test
     fun `game with JSON statistics output completes successfully`() {
         val game = Monopoly(
-            players = listOf(
-                Player("Charlie"),
-                Player("Diana"),
-            ),
-            rng = Random(456),
             config = Config(
                 maxRounds = 15,
                 collectStatistics = true,
                 statisticsOutputFormat = StatisticsOutputFormat.JSON,
+                randomSeed = 456,
+                playerConfigs = listOf(
+                    PlayerConfig("Charlie", DefaultStrategy()),
+                    PlayerConfig("Diana", DefaultStrategy()),
+                ),
             ),
         )
         
@@ -50,14 +51,14 @@ internal class MonopolyStatisticsIntegrationTest {
     @Test
     fun `game without statistics collection still works`() {
         val game = Monopoly(
-            players = listOf(
-                Player("Grace"),
-                Player("Henry"),
-            ),
-            rng = Random(999),
             config = Config(
                 maxRounds = 10,
                 collectStatistics = false, // No statistics
+                randomSeed = 999,
+                playerConfigs = listOf(
+                    PlayerConfig("Grace", DefaultStrategy()),
+                    PlayerConfig("Henry", DefaultStrategy()),
+                ),
             ),
         )
         

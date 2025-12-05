@@ -5,9 +5,11 @@ package ca.jonathanfritz.monopoly.event
 import ca.jonathanfritz.monopoly.Config
 import ca.jonathanfritz.monopoly.Monopoly
 import ca.jonathanfritz.monopoly.Player
+import ca.jonathanfritz.monopoly.PlayerConfig
 import ca.jonathanfritz.monopoly.board.Bank
 import ca.jonathanfritz.monopoly.board.Board
 import ca.jonathanfritz.monopoly.deed.Property
+import ca.jonathanfritz.monopoly.strategy.DefaultStrategy
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
@@ -22,13 +24,19 @@ internal class EventEmissionIntegrationTest {
         val listener = TestEventCollector()
         eventBus.register(listener)
 
-        val players = listOf(Player("Player1"), Player("Player2"))
         val game =
             Monopoly(
-                players = players,
-                rng = Random(42),
+                config =
+                    Config(
+                        maxRounds = 2,
+                        randomSeed = 42,
+                        playerConfigs =
+                            listOf(
+                                PlayerConfig("Player1", DefaultStrategy()),
+                                PlayerConfig("Player2", DefaultStrategy()),
+                            ),
+                    ),
                 eventBus = eventBus,
-                config = Config(maxRounds = 2),
             )
 
         game.executeGame()
@@ -48,13 +56,19 @@ internal class EventEmissionIntegrationTest {
         val listener = TestEventCollector()
         eventBus.register(listener)
 
-        val players = listOf(Player("Player1"), Player("Player2"))
         val game =
             Monopoly(
-                players = players,
-                rng = Random(42),
+                config =
+                    Config(
+                        maxRounds = 1,
+                        randomSeed = 42,
+                        playerConfigs =
+                            listOf(
+                                PlayerConfig("Player1", DefaultStrategy()),
+                                PlayerConfig("Player2", DefaultStrategy()),
+                            ),
+                    ),
                 eventBus = eventBus,
-                config = Config(maxRounds = 1),
             )
 
         game.executeGame()
@@ -63,8 +77,8 @@ internal class EventEmissionIntegrationTest {
         val turnStartedEvents = listener.events.filterIsInstance<GameEvent.TurnStarted>()
         val turnEndedEvents = listener.events.filterIsInstance<GameEvent.TurnEnded>()
 
-        assertTrue(turnStartedEvents.size >= players.size, "Should have at least one turn per player")
-        assertTrue(turnEndedEvents.size >= players.size, "Should have at least one turn end per player")
+        assertTrue(turnStartedEvents.size >= 2, "Should have at least one turn per player")
+        assertTrue(turnEndedEvents.size >= 2, "Should have at least one turn end per player")
     }
 
     @Test
@@ -73,13 +87,18 @@ internal class EventEmissionIntegrationTest {
         val listener = TestEventCollector()
         eventBus.register(listener)
 
-        val players = listOf(Player("Player1"))
         val game =
             Monopoly(
-                players = players,
-                rng = Random(42),
+                config =
+                    Config(
+                        maxRounds = 5,
+                        randomSeed = 42,
+                        playerConfigs =
+                            listOf(
+                                PlayerConfig("Player1", DefaultStrategy()),
+                            ),
+                    ),
                 eventBus = eventBus,
-                config = Config(maxRounds = 1),
             )
 
         game.executeGame()
@@ -101,13 +120,18 @@ internal class EventEmissionIntegrationTest {
         val listener = TestEventCollector()
         eventBus.register(listener)
 
-        val players = listOf(Player("Player1"))
         val game =
             Monopoly(
-                players = players,
-                rng = Random(42),
+                config =
+                    Config(
+                        maxRounds = 5,
+                        randomSeed = 42,
+                        playerConfigs =
+                            listOf(
+                                PlayerConfig("Player1", DefaultStrategy()),
+                            ),
+                    ),
                 eventBus = eventBus,
-                config = Config(maxRounds = 1),
             )
 
         game.executeGame()
@@ -129,13 +153,18 @@ internal class EventEmissionIntegrationTest {
         val listener = TestEventCollector()
         eventBus.register(listener)
 
-        val players = listOf(Player("Player1"))
         val game =
             Monopoly(
-                players = players,
-                rng = Random(42),
+                config =
+                    Config(
+                        maxRounds = 5,
+                        randomSeed = 42,
+                        playerConfigs =
+                            listOf(
+                                PlayerConfig("Player1", DefaultStrategy()),
+                            ),
+                    ),
                 eventBus = eventBus,
-                config = Config(maxRounds = 1),
             )
 
         game.executeGame()
@@ -155,13 +184,19 @@ internal class EventEmissionIntegrationTest {
         val listener = TestEventCollector()
         eventBus.register(listener)
 
-        val players = listOf(Player("Player1"), Player("Player2"))
         val game =
             Monopoly(
-                players = players,
-                rng = Random(42),
+                config =
+                    Config(
+                        maxRounds = 5,
+                        randomSeed = 42,
+                        playerConfigs =
+                            listOf(
+                                PlayerConfig("Player1", DefaultStrategy()),
+                                PlayerConfig("Player2", DefaultStrategy()),
+                            ),
+                    ),
                 eventBus = eventBus,
-                config = Config(maxRounds = 5),
             )
 
         game.executeGame()
@@ -182,13 +217,19 @@ internal class EventEmissionIntegrationTest {
         val listener = TestEventCollector()
         eventBus.register(listener)
 
-        val players = listOf(Player("Player1"), Player("Player2"))
         val game =
             Monopoly(
-                players = players,
-                rng = Random(123),
+                config =
+                    Config(
+                        maxRounds = 10,
+                        randomSeed = 123,
+                        playerConfigs =
+                            listOf(
+                                PlayerConfig("Player1", DefaultStrategy()),
+                                PlayerConfig("Player2", DefaultStrategy()),
+                            ),
+                    ),
                 eventBus = eventBus,
-                config = Config(maxRounds = 10),
             )
 
         game.executeGame()
@@ -211,13 +252,19 @@ internal class EventEmissionIntegrationTest {
         val listener = TestEventCollector()
         eventBus.register(listener)
 
-        val players = listOf(Player("Player1"), Player("Player2"))
         val game =
             Monopoly(
-                players = players,
-                rng = Random(999),
+                config =
+                    Config(
+                        maxRounds = 20,
+                        randomSeed = 999,
+                        playerConfigs =
+                            listOf(
+                                PlayerConfig("Player1", DefaultStrategy()),
+                                PlayerConfig("Player2", DefaultStrategy()),
+                            ),
+                    ),
                 eventBus = eventBus,
-                config = Config(maxRounds = 20),
             )
 
         game.executeGame()
@@ -240,13 +287,19 @@ internal class EventEmissionIntegrationTest {
         val listener = TestEventCollector()
         eventBus.register(listener)
 
-        val players = listOf(Player("Player1"), Player("Player2"))
         val game =
             Monopoly(
-                players = players,
-                rng = Random(42),
+                config =
+                    Config(
+                        maxRounds = 2,
+                        randomSeed = 42,
+                        playerConfigs =
+                            listOf(
+                                PlayerConfig("Player1", DefaultStrategy()),
+                                PlayerConfig("Player2", DefaultStrategy()),
+                            ),
+                    ),
                 eventBus = eventBus,
-                config = Config(maxRounds = 2),
             )
 
         game.executeGame()
@@ -310,13 +363,18 @@ internal class EventEmissionIntegrationTest {
         val listener = TestEventCollector()
         eventBus.register(listener)
 
-        val players = listOf(Player("Player1"))
         val game =
             Monopoly(
-                players = players,
-                rng = Random(42),
+                config =
+                    Config(
+                        maxRounds = 5,
+                        randomSeed = 42,
+                        playerConfigs =
+                            listOf(
+                                PlayerConfig("Player1", DefaultStrategy()),
+                            ),
+                    ),
                 eventBus = eventBus,
-                config = Config(maxRounds = 1),
             )
 
         game.executeGame()

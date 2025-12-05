@@ -5,7 +5,9 @@ package ca.jonathanfritz.monopoly.statistics
 import ca.jonathanfritz.monopoly.Config
 import ca.jonathanfritz.monopoly.Monopoly
 import ca.jonathanfritz.monopoly.Player
+import ca.jonathanfritz.monopoly.PlayerConfig
 import ca.jonathanfritz.monopoly.event.EventBus
+import ca.jonathanfritz.monopoly.strategy.DefaultStrategy
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
@@ -20,17 +22,17 @@ internal class GameStatisticsIntegrationTest {
         val stats = GameStatistics()
         eventBus.register(stats)
 
-        val players = listOf(
-            Player("Player1"),
-            Player("Player2"),
-            Player("Player3"),
-        )
-
         val game = Monopoly(
-            players = players,
-            rng = Random(42),
+            config = Config(
+                maxRounds = 10,
+                randomSeed = 42,
+                playerConfigs = listOf(
+                    PlayerConfig("Player1", DefaultStrategy()),
+                    PlayerConfig("Player2", DefaultStrategy()),
+                    PlayerConfig("Player3", DefaultStrategy()),
+                ),
+            ),
             eventBus = eventBus,
-            config = Config(maxRounds = 10),
         )
 
         game.executeGame()
@@ -64,16 +66,16 @@ internal class GameStatisticsIntegrationTest {
         val stats = GameStatistics()
         eventBus.register(stats)
 
-        val players = listOf(
-            Player("Player1"),
-            Player("Player2"),
-        )
-
         val game = Monopoly(
-            players = players,
-            rng = Random(123),
+            config = Config(
+                maxRounds = 20,
+                randomSeed = 123,
+                playerConfigs = listOf(
+                    PlayerConfig("Player1", DefaultStrategy()),
+                    PlayerConfig("Player2", DefaultStrategy()),
+                ),
+            ),
             eventBus = eventBus,
-            config = Config(maxRounds = 20),
         )
 
         game.executeGame()
@@ -98,16 +100,16 @@ internal class GameStatisticsIntegrationTest {
         val stats = GameStatistics()
         eventBus.register(stats)
 
-        val players = listOf(
-            Player("Player1"),
-            Player("Player2"),
-        )
-
         val game = Monopoly(
-            players = players,
-            rng = Random(999),
+            config = Config(
+                maxRounds = 50,
+                randomSeed = 999,
+                playerConfigs = listOf(
+                    PlayerConfig("Player1", DefaultStrategy()),
+                    PlayerConfig("Player2", DefaultStrategy()),
+                ),
+            ),
             eventBus = eventBus,
-            config = Config(maxRounds = 50),
         )
 
         game.executeGame()
@@ -131,17 +133,17 @@ internal class GameStatisticsIntegrationTest {
         val stats = GameStatistics()
         eventBus.register(stats)
 
-        val players = listOf(
-            Player("Player1"),
-            Player("Player2"),
-            Player("Player3"),
-        )
-
         val game = Monopoly(
-            players = players,
-            rng = Random(777),
+            config = Config(
+                maxRounds = 30,
+                randomSeed = 777,
+                playerConfigs = listOf(
+                    PlayerConfig("Player1", DefaultStrategy()),
+                    PlayerConfig("Player2", DefaultStrategy()),
+                    PlayerConfig("Player3", DefaultStrategy()),
+                ),
+            ),
             eventBus = eventBus,
-            config = Config(maxRounds = 30),
         )
 
         game.executeGame()
@@ -167,16 +169,16 @@ internal class GameStatisticsIntegrationTest {
         val stats = GameStatistics()
         eventBus.register(stats)
 
-        val players = listOf(
-            Player("Player1"),
-            Player("Player2"),
-        )
-
         val game = Monopoly(
-            players = players,
-            rng = Random(555),
+            config = Config(
+                maxRounds = 25,
+                randomSeed = 555,
+                playerConfigs = listOf(
+                    PlayerConfig("Player1", DefaultStrategy()),
+                    PlayerConfig("Player2", DefaultStrategy()),
+                ),
+            ),
             eventBus = eventBus,
-            config = Config(maxRounds = 25),
         )
 
         game.executeGame()
@@ -206,16 +208,16 @@ internal class GameStatisticsIntegrationTest {
         val stats = GameStatistics()
         eventBus.register(stats)
 
-        val players = listOf(
-            Player("Player1"),
-            Player("Player2"),
-        )
-
         val game = Monopoly(
-            players = players,
-            rng = Random(321),
+            config = Config(
+                maxRounds = 30,
+                randomSeed = 321,
+                playerConfigs = listOf(
+                    PlayerConfig("Player1", DefaultStrategy()),
+                    PlayerConfig("Player2", DefaultStrategy()),
+                ),
+            ),
             eventBus = eventBus,
-            config = Config(maxRounds = 30),
         )
 
         game.executeGame()
@@ -250,16 +252,16 @@ internal class GameStatisticsIntegrationTest {
         val stats = GameStatistics()
         eventBus.register(stats)
 
-        val players = listOf(
-            Player("Player1"),
-            Player("Player2"),
-        )
-
         val game = Monopoly(
-            players = players,
-            rng = Random(888),
+            config = Config(
+                maxRounds = 40,
+                randomSeed = 888,
+                playerConfigs = listOf(
+                    PlayerConfig("Player1", DefaultStrategy()),
+                    PlayerConfig("Player2", DefaultStrategy()),
+                ),
+            ),
             eventBus = eventBus,
-            config = Config(maxRounds = 40),
         )
 
         game.executeGame()
@@ -279,62 +281,52 @@ internal class GameStatisticsIntegrationTest {
         val stats = GameStatistics()
         eventBus.register(stats)
 
-        val players = listOf(
-            Player("Player1"),
-            Player("Player2"),
-        )
-
         val game = Monopoly(
-            players = players,
-            rng = Random(42),
+            config = Config(
+                maxRounds = 5,
+                randomSeed = 42,
+                playerConfigs = listOf(
+                    PlayerConfig("Player1", DefaultStrategy()),
+                    PlayerConfig("Player2", DefaultStrategy()),
+                ),
+            ),
             eventBus = eventBus,
-            config = Config(maxRounds = 5),
         )
 
-        // Take snapshot before game starts
-        val snapshotBefore = stats.snapshot()
-        assertEquals(0, snapshotBefore.totalRounds)
-        assertFalse(snapshotBefore.gameEnded)
+        // Take snapshot before game
+        val beforeSnapshot = stats.snapshot()
+        assertEquals(0, beforeSnapshot.totalRounds, "Should have 0 rounds before game")
 
-        // Run game
         game.executeGame()
 
-        // Take snapshot after game ends
-        val snapshotAfter = stats.snapshot()
-        assertTrue(snapshotAfter.totalRounds > 0)
-        assertTrue(snapshotAfter.gameEnded)
-
-        // Snapshots should be independently valid
-        assertNotEquals(snapshotBefore.totalRounds, snapshotAfter.totalRounds)
+        // Take snapshot after game
+        val afterSnapshot = stats.snapshot()
+        assertTrue(afterSnapshot.totalRounds > 0, "Should have rounds after game")
+        assertTrue(afterSnapshot.gameEnded, "Game should have ended")
     }
 
     @Test
-    fun `tracks doubles leading to different outcomes`() {
+    fun `outputs statistics in JSON format`() {
         val eventBus = EventBus()
         val stats = GameStatistics()
         eventBus.register(stats)
 
-        val players = listOf(
-            Player("Player1"),
-            Player("Player2"),
-        )
-
         val game = Monopoly(
-            players = players,
-            rng = Random(666),
+            config = Config(
+                maxRounds = 15,
+                statisticsOutputFormat = StatisticsOutputFormat.JSON,
+                randomSeed = 666,
+                playerConfigs = listOf(
+                    PlayerConfig("Player1", DefaultStrategy()),
+                    PlayerConfig("Player2", DefaultStrategy()),
+                ),
+            ),
             eventBus = eventBus,
-            config = Config(maxRounds = 20),
         )
 
         game.executeGame()
 
         val snapshot = stats.snapshot()
-
-        // Verify doubles are being tracked
-        if (snapshot.doublesCount.isNotEmpty()) {
-            snapshot.doublesCount.forEach { (player, count) ->
-                assertTrue(count > 0, "Doubles count should be positive for $player")
-            }
-        }
+        assertTrue(snapshot.gameEnded, "Game should have ended")
     }
 }

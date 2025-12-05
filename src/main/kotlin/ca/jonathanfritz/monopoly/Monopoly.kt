@@ -20,19 +20,18 @@ import kotlin.random.Random
 //  house rules
 @Suppress("ktlint:standard:no-blank-line-in-list")
 class Monopoly(
-    private val players: List<Player>,
-
-    private val rng: Random = Random.Default,
-
     private val config: Config = Config(),
 
     // optional event bus for statistics collection (auto-created if config.collectStatistics is true)
     private val eventBus: EventBus? = if (config.collectStatistics) EventBus() else null,
-
-    private val bank: Bank = Bank(eventBus = eventBus),
-
-    private val board: Board = Board(players, bank, rng, eventBus = eventBus),
 ) {
+    private val rng: Random = config.randomSeed?.let { Random(it) } ?: Random.Default
+
+    private val bank: Bank = Bank(eventBus = eventBus)
+
+    private val players: List<Player> = createPlayers(config, eventBus)
+
+    private val board: Board = Board(players, bank, rng, eventBus = eventBus)
     private val gameStatistics: GameStatistics? =
         if (config.collectStatistics && eventBus != null) {
             GameStatistics().also { eventBus.register(it) }
@@ -86,20 +85,44 @@ class Monopoly(
             }
         }
     }
+
+    companion object {
+        /**
+         * Creates players from config. If config.playerConfigs is empty, returns empty list.
+         */
+        private fun createPlayers(
+            config: Config,
+            eventBus: EventBus?,
+        ): List<Player> {
+            return config.playerConfigs.map { playerConfig ->
+                Player(
+                    name = playerConfig.name,
+                    strategy = playerConfig.strategy,
+                    eventBus = eventBus,
+                )
+            }
+        }
+    }
 }
 
 fun main() {
-    val eventBus = EventBus()
-    val rng = Random(1)
-    Monopoly(
-        players =
-            listOf(
-                Player("Oscar the Grouch", eventBus = eventBus, strategy = SlumlordStrategy(rng)),
-                Player("Bert", eventBus = eventBus, strategy = ConservativeStrategy()),
-                Player("Count von Count", eventBus = eventBus, strategy = HighRentStrategy(rng)),
-                Player("Cookie Monster", eventBus = eventBus, strategy = GamblerStrategy(rng)),
-            ),
-        rng = rng, // for now, play the same game over and over to verify functionality
-        eventBus = eventBus,
-    ).executeGame()
+    // Create a seeded RNG for strategies that need it
+    val seed = 1L
+    val rng = Random(seed)
+
+    // Configure the game
+    val config =
+        Config(
+            randomSeed = seed, // Use same seed for deterministic gameplay
+            playerConfigs =
+                listOf(
+                    PlayerConfig("Oscar the Grouch", SlumlordStrategy(rng)),
+                    PlayerConfig("Bert", ConservativeStrategy()),
+                    PlayerConfig("Count von Count", HighRentStrategy(rng)),
+                    PlayerConfig("Cookie Monster", GamblerStrategy(rng)),
+                ),
+        )
+
+    // Run the game
+    Monopoly(config = config).executeGame()
 }
