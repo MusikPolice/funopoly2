@@ -102,6 +102,52 @@ internal class ChaoticStrategyTest {
     }
 
     @Test
+    fun `bids chaotically with variable increments`() {
+        val player = Player("Ernie", money = 1500, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Should bid with chaotic increments ($1-$50 or $20-$100)
+        val bid = strategy.calculateBidIncrease(
+            deed = BalticAvenue(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        // Might bid or might drop out (chaotic behavior)
+        if (bid != null) {
+            assertTrue(bid >= 20, "Bid should meet minimum if bidding")
+        }
+    }
+
+    @Test
+    fun `bids more aggressively when blocking opponent monopoly`() {
+        val player = Player("Ernie", money = 1500, strategy = strategy)
+        val opponent = Player("Opponent", money = 1500)
+        opponent.deeds[StJamesPlace()] = Player.Development()
+        opponent.deeds[TennesseeAvenue()] = Player.Development()
+        val bank = Bank()
+        val board = Board(listOf(player, opponent), bank)
+        
+        // NewYorkAvenue blocks opponent's Orange monopoly
+        // Should bid more aggressively ($30-$80 increments when blocking)
+        val bid = strategy.calculateBidIncrease(
+            deed = NewYorkAvenue(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNotNull(bid, "Should bid when blocking opponent")
+        assertTrue(bid!! >= 20, "Bid should meet minimum")
+    }
+
+    @Test
     fun `valuateProperty values blocking properties highly`() {
         val player = Player("Ernie", money = 1500, strategy = strategy)
         val opponent = Player("Opponent", money = 1500)

@@ -165,6 +165,72 @@ internal class HighRentStrategyTest {
     }
 
     @Test
+    fun `bids more aggressively on expensive properties`() {
+        val player = Player("Count", money = 1500, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Park Place costs $350, max bid is 1.2x = $420
+        val bid = strategy.calculateBidIncrease(
+            deed = ParkPlace(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNotNull(bid, "Should bid on expensive property")
+        assertTrue(bid!! >= 20, "Bid should meet minimum")
+        // With $20-50 increments, should bid above minimum
+        assertTrue(bid >= 30, "Should bid aggressively")
+    }
+
+    @Test
+    fun `bids extra aggressively when completing monopoly`() {
+        val player = Player("Count", money = 1500, strategy = strategy)
+        player.deeds[ParkPlace()] = Player.Development()
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Already owns Park Place, Boardwalk completes monopoly
+        // Should get 1.5x multiplier (Boardwalk costs $400, so max $600)
+        val bid = strategy.calculateBidIncrease(
+            deed = Boardwalk(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNotNull(bid, "Should bid when completing monopoly")
+        assertTrue(bid!! >= 20, "Bid should meet minimum")
+        // Should bid aggressively for monopoly completion
+        assertTrue(bid >= 30, "Should bid extra aggressively for monopoly")
+    }
+
+    @Test
+    fun `drops out when auction price exceeds value threshold`() {
+        val player = Player("Count", money = 1500, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Baltic Avenue costs $60, max bid is 1.2x = $72
+        // If current bid is already $100, should drop out
+        val bid = strategy.calculateBidIncrease(
+            deed = BalticAvenue(),
+            currentBid = 100,
+            minimumBid = 101,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNull(bid, "Should drop out when price exceeds value threshold")
+    }
+
+    @Test
     fun `valuateProperty values cheap properties at 0_7x base value`() {
         val player = Player("Count", money = 1500, strategy = strategy)
         val board = Board(listOf(player), Bank())

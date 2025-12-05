@@ -10,6 +10,7 @@ import ca.jonathanfritz.monopoly.deed.Property.*
 import ca.jonathanfritz.monopoly.deed.TitleDeed
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -192,5 +193,24 @@ internal class PlayerStrategyTest {
         val shouldBuy = strategy.shouldBuyProperty(Boardwalk(), player, bank, board)
         
         assertFalse(shouldBuy, "DefaultStrategy should not buy property if cannot afford it")
+    }
+
+    @Test
+    fun `DefaultStrategy never participates in auctions`() {
+        val player = Player("Test", money = 1500, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // DefaultStrategy should always return null (never bid)
+        val bid = strategy.calculateBidIncrease(
+            deed = BalticAvenue(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNull(bid, "DefaultStrategy should never participate in auctions")
     }
 }

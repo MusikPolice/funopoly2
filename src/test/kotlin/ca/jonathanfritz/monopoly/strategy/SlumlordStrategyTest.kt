@@ -185,6 +185,84 @@ internal class SlumlordStrategyTest {
     }
 
     @Test
+    fun `bids more on cheap properties than expensive ones`() {
+        val player = Player("Oscar", money = 1500, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Baltic Avenue costs $60, max bid is 0.8x = $48
+        val cheapBid = strategy.calculateBidIncrease(
+            deed = BalticAvenue(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        // Park Place costs $350, max bid is 0.5x = $175
+        val expensiveBid = strategy.calculateBidIncrease(
+            deed = ParkPlace(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNotNull(cheapBid, "Should bid on cheap property")
+        // Expensive property might be null or lower relative to price
+        if (expensiveBid != null && cheapBid != null) {
+            // If both bid, cheap property should be relatively more aggressive
+            val cheapRatio = cheapBid.toDouble() / 60  // Baltic price
+            val expensiveRatio = expensiveBid.toDouble() / 350  // Park Place price
+            assertTrue(cheapRatio > expensiveRatio, "Should bid more aggressively on cheap properties")
+        }
+    }
+
+    @Test
+    fun `bids with monopoly completion bonus`() {
+        val player = Player("Oscar", money = 1500, strategy = strategy)
+        player.deeds[MediterraneanAvenue()] = Player.Development()
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Already owns Mediterranean, Baltic completes monopoly
+        // Should get 1.2x multiplier (Baltic costs $60, base 0.8x = $48, with bonus = $57.6)
+        val bid = strategy.calculateBidIncrease(
+            deed = BalticAvenue(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNotNull(bid, "Should bid when completing monopoly")
+        assertTrue(bid!! >= 20, "Bid should meet minimum")
+    }
+
+    @Test
+    fun `drops out when auction price exceeds value threshold`() {
+        val player = Player("Oscar", money = 1500, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Baltic Avenue costs $60, max bid is 0.8x = $48
+        // If current bid is already $60, should drop out
+        val bid = strategy.calculateBidIncrease(
+            deed = BalticAvenue(),
+            currentBid = 60,
+            minimumBid = 61,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNull(bid, "Should drop out when price exceeds value threshold")
+    }
+
+    @Test
     fun `valuateProperty values expensive properties at 0_5x base value`() {
         val player = Player("Oscar", money = 1500, strategy = strategy)
         val board = Board(listOf(player), Bank())

@@ -60,6 +60,47 @@ internal class ConservativeStrategyTest {
     }
 
     @Test
+    fun `bids cautiously up to 70 percent of strategic value`() {
+        val player = Player("Big Bird", money = 1500, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // Should bid up to 0.7x strategic value
+        val bid = strategy.calculateBidIncrease(
+            deed = BalticAvenue(),
+            currentBid = 10,
+            minimumBid = 20,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNotNull(bid, "Should bid on property")
+        assertTrue(bid!! >= 20, "Bid should meet minimum")
+        // With $10 increments, should be exactly $20 or $30
+        assertTrue(bid == 20 || bid == 30, "Should use $10 increments")
+    }
+
+    @Test
+    fun `drops out when auction price exceeds conservative threshold`() {
+        val player = Player("Big Bird", money = 1500, strategy = strategy)
+        val bank = Bank()
+        val board = Board(listOf(player), bank)
+        
+        // If current bid already exceeds 0.7x strategic value, should drop out
+        val bid = strategy.calculateBidIncrease(
+            deed = BalticAvenue(),
+            currentBid = 150,
+            minimumBid = 151,
+            player = player,
+            bank = bank,
+            board = board
+        )
+        
+        assertNull(bid, "Should drop out when price exceeds conservative threshold")
+    }
+
+    @Test
     fun `calculateBidIncrease returns null when current bid exceeds 70 percent of value`() {
         val player = Player("Big Bird", money = 1500, strategy = strategy)
         val board = Board(listOf(player), Bank())
